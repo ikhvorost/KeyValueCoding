@@ -34,12 +34,12 @@ func synchronized<T : AnyObject, U>(_ obj: T, closure: () -> U) -> U {
     return closure()
 }
 
-struct Property {
-    let name: String
-    let type: Any.Type
-    let isStrong: Bool
-    let isVar: Bool
-    let offset: Int
+public struct Property {
+    public let name: String
+    public let type: Any.Type
+    public let isStrong: Bool
+    public let isVar: Bool
+    public let offset: Int
 }
 
 class PropertyCache {
@@ -61,7 +61,11 @@ class PropertyCache {
             
             let offset = swift_reflectionMirror_recursiveChildOffset(type, index: $0)
             
-            return Property(name: name, type: childType, isStrong: field.isStrong, isVar: field.isVar, offset: offset)
+            return Property(name: name,
+                            type: childType,
+                            isStrong: field.isStrong,
+                            isVar: field.isVar,
+                            offset: offset)
         }
     }
     

@@ -1,5 +1,5 @@
 //
-//  Dynamic.swift
+//  ReflectionMirror.swift
 //
 //  Created by Iurii Khvorost <iurii.khvorost@gmail.com> on 2022/04/22.
 //  Copyright © 2022 Iurii Khvorost. All rights reserved.
@@ -50,32 +50,31 @@ func swift_reflectionMirror_recursiveChildOffset(_: Any.Type, index: Int) -> Int
 internal func _metadataKind(_: Any.Type) -> UInt
 
 
-
-/*
-typealias MirrorRecursiveCountFunc = @convention(c) (_: Any) -> Int
-typealias MirrorRecursiveChildMetadataFunc = @convention(c) (
-    _: Any,
-    _ index: Int,
-    _ fieldMetadata: UnsafeMutablePointer<Any>
-) -> Any
-
-typealias MirrorRecursiveChildOffsetFunc = @convention(c) (_: Any, _ index: Int) -> Int
-
-/// Dynamic shared object
-class Dynamic {
+public enum _MetadataKind: UInt {
+    // With "flags":
+    // runtimePrivate = 0x100
+    // nonHeap = 0x200
+    // nonType = 0x400
     
-    private static let RTLD_DEFAULT = UnsafeMutableRawPointer(bitPattern: -2)
+    case `class` = 0
+    case `struct` = 0x200     // 0 | nonHeap
+    case `enum` = 0x201       // 1 | nonHeap
+    case optional = 0x202     // 2 | nonHeap
+    case foreignClass = 0x203 // 3 | nonHeap
+    case opaque = 0x300       // 0 | runtimePrivate | nonHeap
+    case tuple = 0x301        // 1 | runtimePrivate | nonHeap
+    case function = 0x302     // 2 | runtimePrivate | nonHeap
+    case existential = 0x303  // 3 | runtimePrivate | nonHeap
+    case metatype = 0x304     // 4 | runtimePrivate | nonHeap
+    case objcClassWrapper = 0x305     // 5 | runtimePrivate | nonHeap
+    case existentialMetatype = 0x306  // 6 | runtimePrivate | nonHeap
+    case heapLocalVariable = 0x400    // 0 | nonType
+    case heapGenericLocalVariable = 0x500 // 0 | nonType | runtimePrivate
+    case errorObject = 0x501  // 1 | nonType | runtimePrivate
+    case unknown = 0xffff
     
-    private static func dynamic<T>(symbol: String) -> T {
-        guard let sym = dlsym(RTLD_DEFAULT, symbol) else {
-            fatalError("\(symbol) is NOT found!")
-        }
-        return unsafeBitCast(sym, to: T.self)
+    static func kind(of type: Any.Type) -> _MetadataKind {
+        let kind = _metadataKind(type)
+        return _MetadataKind(rawValue: kind) ?? .unknown
     }
-   
-    // Functions
-    static let mirrorRecursiveCount: MirrorRecursiveCountFunc = dynamic(symbol: "swift_reflectionMirror_recursiveCount")
-    static let mirrorRecursiveChildMetadata: MirrorRecursiveChildMetadataFunc = dynamic(symbol: "swift_reflectionMirror_recursiveChildMetadata")
-    static let mirrorRecursiveChildOffset: MirrorRecursiveChildOffsetFunc = dynamic(symbol: "swift_reflectionMirror_recursiveChildOffset")
 }
- */

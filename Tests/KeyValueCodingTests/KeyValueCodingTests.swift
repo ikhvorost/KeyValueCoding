@@ -25,6 +25,7 @@ final class KeyValueCodingTests: XCTestCase {
     func test_class() {
         var user = User()
         
+        // Set
         user.setValue(12345, key: "id")
         user.setValue("Bob", key: "name")
         
@@ -33,12 +34,26 @@ final class KeyValueCodingTests: XCTestCase {
         
         user.setValue(UserType.admin, key: "type")
         
+        // Get
+        
         XCTAssertNil(user.value(key: "undefined"))
         
         XCTAssert(user.value(key: "id") as? Int  == 12345)
         XCTAssert(user.value(key: "name") as? String == "Bob")
         XCTAssert(user.value(key: "birthday") as? Date == date)
         XCTAssert(user.value(key: "type") as? UserType == .admin)
+    }
+    
+    func test_properties() {
+        let user = User()
+        
+        XCTAssert(user.properties.count == 4)
+        
+        let property = user.properties[0]
+        XCTAssert(property.name == "id")
+        XCTAssert(property.type is Int.Type)
+        XCTAssert(property.isStrong)
+        XCTAssert(property.isVar == false)
     }
     
     func test_class_objc() {

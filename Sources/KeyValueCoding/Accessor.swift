@@ -24,9 +24,9 @@
 //
 
 
-protocol Accessors {}
+protocol Accessor {}
 
-extension Accessors {
+extension Accessor {
     
     static func get(from pointer: UnsafeRawPointer) -> Any? {
         return pointer.assumingMemoryBound(to: Self.self).pointee
@@ -39,11 +39,30 @@ extension Accessors {
     }
 }
 
-struct ProtocolTypeContainer {
+fileprivate struct ProtocolTypeContainer {
     let type: Any.Type
     let witnessTable = 0
     
-    var accessors: Accessors.Type {
-        unsafeBitCast(self, to: Accessors.Type.self)
+    var accessor: Accessor.Type {
+        unsafeBitCast(self, to: Accessor.Type.self)
+    }
+}
+
+class AccessorCache {
+    
+    static let shared = AccessorCache()
+    
+    private var cache = [String : ProtocolTypeContainer]()
+    
+    func accessor(of type: Any.Type) -> Accessor.Type {
+        synchronized(self) {
+            let key = String(describing: type)
+            guard let container = cache[key] else {
+                let container = ProtocolTypeContainer(type: type)
+                cache[key] = container
+                return container.accessor
+            }
+            return container.accessor
+        }
     }
 }

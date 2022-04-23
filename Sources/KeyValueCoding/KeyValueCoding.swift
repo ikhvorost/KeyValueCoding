@@ -27,7 +27,14 @@
 public protocol KeyValueCoding {
 }
 
+public typealias KVC = KeyValueCoding
+
 extension KeyValueCoding {
+    
+    public var properties: [Property] {
+        let type = type(of: self)
+        return PropertyCache.shared.properties(of: type)
+    }
     
     private mutating func withPointer<Result>(kind: _MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> Result) throws -> Result {
         switch kind {
@@ -48,35 +55,33 @@ extension KeyValueCoding {
     }
     
     @discardableResult
-    private mutating func property(key: String, _ body: (ProtocolTypeContainer, UnsafeMutableRawPointer) -> Any?) -> Any? {
+    private mutating func property(key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
         let type = type(of: self)
-        
         let kind = _MetadataKind.kind(of: type)
         guard kind == .class || kind == .struct else {
             return nil
         }
         
-        let properties = PropertyCache.shared.properties(of: type)
         guard let property = (properties.first { $0.name == key }) else {
             return nil
         }
         
         return try? withPointer(kind: kind) { pointer in
+            let accessor = AccessorCache.shared.accessor(of: property.type)
             let valuePointer = pointer.advanced(by: property.offset)
-            let container = ProtocolTypeContainer(type: property.type)
-            return body(container, valuePointer)
+            return body(accessor, valuePointer)
         }
     }
     
     public mutating func value(key: String) -> Any? {
-        property(key: key) { container, valuePointer in
-            return container.accessors.get(from: valuePointer)
+        property(key: key) { accessor, valuePointer in
+            return accessor.get(from: valuePointer)
         }
     }
     
     public mutating func setValue(_ value: Any?, key: String) {
-        property(key: key) { container, valuePointer in
-            container.accessors.set(value: value, pointer: valuePointer)
+        property(key: key) { accessor, valuePointer in
+            accessor.set(value: value, pointer: valuePointer)
         }
     }
 }
