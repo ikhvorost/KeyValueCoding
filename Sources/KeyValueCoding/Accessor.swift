@@ -28,11 +28,11 @@ protocol Accessor {}
 
 extension Accessor {
     
-    static func get(from pointer: UnsafeRawPointer) -> Any? {
-        return pointer.assumingMemoryBound(to: Self.self).pointee
+    static func get<T>(from pointer: UnsafeRawPointer) -> T? {
+        return pointer.assumingMemoryBound(to: Self.self).pointee as? T
     }
 
-    static func set(value: Any?, pointer: UnsafeMutableRawPointer) {
+    static func set(value: Any, pointer: UnsafeMutableRawPointer) {
         if let value = value as? Self {
             pointer.assumingMemoryBound(to: self).pointee = value
         }

@@ -24,6 +24,70 @@
 //
 
 
+fileprivate func withPointer<T, U>(_ object: inout T, kind: _MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> U?) throws -> U? {
+    switch kind {
+    case .struct:
+        return try withUnsafePointer(to: &object) {
+            let pointer = UnsafeMutableRawPointer(mutating: $0)
+            return try body(pointer)
+        }
+        
+    case .class:
+        return try withUnsafePointer(to: &object) {
+            try $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
+                try body($0.pointee)
+            }
+        }
+        
+    default:
+        fatalError("Unsupported type")
+    }
+}
+
+@discardableResult
+fileprivate func withProperty<T, U>(_ object: inout T, key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> U?) -> U? {
+    let type = type(of: object)
+    let kind = _MetadataKind.kind(of: type)
+    guard kind == .class || kind == .struct else {
+        return nil
+    }
+    
+    guard let property = (swift_properties(of: type).first { $0.name == key }) else {
+        return nil
+    }
+    
+    return try? withPointer(&object, kind: kind) { pointer in
+        let accessor = AccessorCache.shared.accessor(of: property.type)
+        let valuePointer = pointer.advanced(by: property.offset)
+        return body(accessor, valuePointer)
+    }
+}
+
+// MARK: -
+
+public func swift_properties(of type: Any.Type) -> [Property] {
+    PropertyCache.shared.properties(of: type)
+}
+
+public func swift_properties(of object: Any) -> [Property] {
+    let type = type(of: object)
+    return swift_properties(of: type)
+}
+
+public func swift_value<T, U>(of object: inout T, key: String) -> U? {
+    withProperty(&object, key: key) { accessor, valuePointer in
+        accessor.get(from: valuePointer)
+    }
+}
+
+public func swift_setValue<T>(_ value: Any, key: String, object: inout T) {
+    withProperty(&object, key: key) { accessor, valuePointer in
+        accessor.set(value: value, pointer: valuePointer)
+    }
+}
+
+// MARK: - KeyValueCoding
+
 public protocol KeyValueCoding {
 }
 
@@ -32,55 +96,21 @@ public typealias KVC = KeyValueCoding
 extension KeyValueCoding {
     
     public var properties: [Property] {
-        let type = type(of: self)
-        return PropertyCache.shared.properties(of: type)
+        swift_properties(of: self)
     }
     
-    private mutating func withPointer<Result>(kind: _MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> Result) throws -> Result {
-        switch kind {
-        case .struct:
-            return try withUnsafePointer(to: &self) {
-                let pointer = UnsafeMutableRawPointer(mutating: $0)
-                return try body(pointer)
-            }
-        case .class:
-            return try withUnsafePointer(to: &self) {
-                try $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
-                    try body($0.pointee)
-                }
-            }
-        default:
-            fatalError("Unsupported type")
-        }
-    }
-    
-    @discardableResult
-    private mutating func property(key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
-        let type = type(of: self)
-        let kind = _MetadataKind.kind(of: type)
-        guard kind == .class || kind == .struct else {
-            return nil
-        }
-        
-        guard let property = (properties.first { $0.name == key }) else {
-            return nil
-        }
-        
-        return try? withPointer(kind: kind) { pointer in
-            let accessor = AccessorCache.shared.accessor(of: property.type)
-            let valuePointer = pointer.advanced(by: property.offset)
-            return body(accessor, valuePointer)
-        }
+    public mutating func value<T>(key: String) -> T? {
+        value(key: key) as? T
     }
     
     public mutating func value(key: String) -> Any? {
-        property(key: key) { accessor, valuePointer in
+        withProperty(&self, key: key) { accessor, valuePointer in
             return accessor.get(from: valuePointer)
         }
     }
     
-    public mutating func setValue(_ value: Any?, key: String) {
-        property(key: key) { accessor, valuePointer in
+    public mutating func setValue<T>(_ value: T, key: String) {
+        withProperty(&self, key: key) { accessor, valuePointer in
             accessor.set(value: value, pointer: valuePointer)
         }
     }

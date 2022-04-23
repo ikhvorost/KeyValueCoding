@@ -16,8 +16,30 @@ class User: KeyValueCoding {
     let type: UserType = .none
 }
 
+class A {
+    let a = 0
+}
+
+class B : A, KeyValueCoding {
+    let b = 0
+}
+
 class Object: NSObject, KeyValueCoding {
     @objc let name: String? = ""
+}
+
+class SomeClass {
+    let i = 0
+    let s = "text"
+    let o: Int? = nil
+}
+
+// Struct
+
+struct Book: KeyValueCoding {
+    let id = 0
+    let title = ""
+    let info: String? = nil
 }
 
 final class KeyValueCodingTests: XCTestCase {
@@ -38,10 +60,25 @@ final class KeyValueCodingTests: XCTestCase {
         
         XCTAssertNil(user.value(key: "undefined"))
         
-        XCTAssert(user.value(key: "id") as? Int  == 12345)
-        XCTAssert(user.value(key: "name") as? String == "Bob")
-        XCTAssert(user.value(key: "birthday") as? Date == date)
-        XCTAssert(user.value(key: "type") as? UserType == .admin)
+        XCTAssert(user.value(key: "id") == 12345)
+        XCTAssert(user.value(key: "name") == "Bob")
+        XCTAssert(user.value(key: "birthday") == date)
+        XCTAssert(user.value(key: "type") == UserType.admin)
+        
+        let a = user.value(key: "id")
+        print(a)
+    }
+    
+    func test_inheritance() {
+        var b = B()
+        
+        XCTAssert(b.properties.count == 2)
+        
+        b.setValue(10, key: "a")
+        b.setValue(20, key: "b")
+        
+        XCTAssert(b.value(key: "a") == 10)
+        XCTAssert(b.value(key: "b") == 20)
     }
     
     func test_properties() {
@@ -56,13 +93,36 @@ final class KeyValueCodingTests: XCTestCase {
         XCTAssert(property.isVar == false)
     }
     
-    func test_class_objc() {
+    func test_nsobject() {
         var object = Object()
         
         object.setValue("objc", key: "name")
         //object.setValue("objc", forKey: "name")
         
-        XCTAssert(object.value(key: "name") as? String == "objc")
+        XCTAssert(object.value(key: "name") == "objc")
+    }
+    
+    func test_static() {
+        var some = SomeClass()
+        
+        XCTAssert(swift_properties(of: some).count == 3)
+        XCTAssert(swift_properties(of: some.self).count == 3)
+        
+        swift_setValue(11, key: "i", object: &some)
+        
+        XCTAssert(swift_value(of: &some, key: "i") == 11)
+    }
+    
+    func test_struct() {
+        var book = Book()
+        
+        book.setValue(12345, key: "id")
+        book.setValue("Swift", key: "title")
+        book.setValue("Struct", key: "info")
+        
+        XCTAssert(book.value(key: "id") == 12345)
+        XCTAssert(book.value(key: "title") == "Swift")
+        XCTAssert(book.value(key: "info") == "Struct")
     }
 }
 
