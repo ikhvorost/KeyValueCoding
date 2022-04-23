@@ -10,40 +10,44 @@ enum UserType {
 }
 
 class User: KeyValueCoding {
-    let id = 11
-    let name = "John"
-    let birthday: Date? = Date()
+    let id = 0
+    let name = ""
+    let birthday: Date? = nil
     let type: UserType = .none
+}
+
+class Object: NSObject, KeyValueCoding {
+    @objc let name: String? = ""
 }
 
 final class KeyValueCodingTests: XCTestCase {
     
-    func test_value() {
+    func test_class() {
         var user = User()
         
-        XCTAssertNil(user.value(forKey: "undefined"))
-        
-        XCTAssert(user.value(forKey: "id") as? Int  == user.id)
-        XCTAssert(user.value(forKey: "name") as? String == user.name)
-        XCTAssert(user.value(forKey: "birthday") as? Date == user.birthday)
-        XCTAssert(user.value(forKey: "type") as? UserType == user.type)
-    }
-    
-    func test_setValue() {
-        var user = User()
-        
-        user.setValue(12345, forKey: "id")
-        user.setValue("Bob", forKey: "name")
+        user.setValue(12345, key: "id")
+        user.setValue("Bob", key: "name")
         
         let date = Date()
-        user.setValue(date, forKey: "birthday")
+        user.setValue(date, key: "birthday")
         
-        user.setValue(UserType.admin, forKey: "type")
+        user.setValue(UserType.admin, key: "type")
         
-        XCTAssertEqual(user.id, 12345)
-        XCTAssertEqual(user.name, "Bob")
-        XCTAssertEqual(user.birthday, date)
-        XCTAssertEqual(user.type, .admin)
+        XCTAssertNil(user.value(key: "undefined"))
+        
+        XCTAssert(user.value(key: "id") as? Int  == 12345)
+        XCTAssert(user.value(key: "name") as? String == "Bob")
+        XCTAssert(user.value(key: "birthday") as? Date == date)
+        XCTAssert(user.value(key: "type") as? UserType == .admin)
+    }
+    
+    func test_class_objc() {
+        var object = Object()
+        
+        object.setValue("objc", key: "name")
+        //object.setValue("objc", forKey: "name")
+        
+        XCTAssert(object.value(key: "name") as? String == "objc")
     }
 }
 

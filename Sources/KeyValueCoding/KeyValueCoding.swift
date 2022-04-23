@@ -64,19 +64,17 @@ extension KeyValueCoding {
         return try? withPointer(kind: kind) { pointer in
             let valuePointer = pointer.advanced(by: property.offset)
             let container = ProtocolTypeContainer(type: property.type)
-            
-            //container.accessors.set(value: value, pointer: valuePointer)
             return body(container, valuePointer)
         }
     }
     
-    public mutating func value(forKey key: String) -> Any? {
+    public mutating func value(key: String) -> Any? {
         property(key: key) { container, valuePointer in
             return container.accessors.get(from: valuePointer)
         }
     }
     
-    public mutating func setValue(_ value: Any?, forKey key: String) {
+    public mutating func setValue(_ value: Any?, key: String) {
         property(key: key) { container, valuePointer in
             container.accessors.set(value: value, pointer: valuePointer)
         }
