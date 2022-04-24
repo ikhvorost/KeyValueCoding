@@ -51,10 +51,12 @@ final class KeyValueCodingTests: XCTestCase {
         let userType = type(of: user)
         XCTAssert(swift_metadataKind(of: userType) == .class)
         XCTAssert(swift_metadataKind(of: user) == .class)
+        XCTAssert(user.metadataKind == .class)
         
         let bookType = type(of: book)
         XCTAssert(swift_metadataKind(of: bookType) == .struct)
         XCTAssert(swift_metadataKind(of: book) == .struct)
+        XCTAssert(book.metadataKind == .struct)
     }
     
     func test_class() {
@@ -98,15 +100,19 @@ final class KeyValueCodingTests: XCTestCase {
         XCTAssert(user["name"] as? String == "Bob")
         XCTAssert(user["birthday"] as? Date == date)
         XCTAssert(user["type"] as? UserType == .admin)
+        
+        XCTAssertNil(user["undefined"])
     }
     
     func test_static() {
         var some = SomeClass()
         
+        XCTAssert(swift_metadataKind(of: some) == .class)
+        
         XCTAssert(swift_properties(of: some).count == 3)
         XCTAssert(swift_properties(of: some.self).count == 3)
         
-        swift_setValue(11, key: "i", object: &some)
+        swift_setValue(11, instance: &some, key: "i")
         
         XCTAssert(swift_value(of: &some, key: "i") as? Int  == 11)
         

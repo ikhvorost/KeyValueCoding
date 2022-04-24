@@ -35,11 +35,17 @@ func synchronized<T : AnyObject, U>(_ obj: T, closure: () -> U) -> U {
     return closure()
 }
 
-public struct Property {
+/// Property metadata details.
+public struct PropertyMetadata {
+    /// Name of property.
     public let name: String
+    /// Type of property.
     public let type: Any.Type
+    /// Is strong referenced property.
     public let isStrong: Bool
+    /// Is variable property.
     public let isVar: Bool
+    /// Offset of property.
     public let offset: Int
 }
 
@@ -47,9 +53,9 @@ class PropertyCache {
     
     static let shared = PropertyCache()
     
-    private var cache = [String : [Property]]()
+    private var cache = [String : [PropertyMetadata]]()
     
-    private func enumProperties(of type: Any.Type) -> [Property] {
+    private func enumProperties(of type: Any.Type) -> [PropertyMetadata] {
         let count = swift_reflectionMirror_recursiveCount(type)
         var field = _FieldReflectionMetadata()
         return (0..<count).compactMap {
@@ -62,7 +68,7 @@ class PropertyCache {
             
             let offset = swift_reflectionMirror_recursiveChildOffset(type, index: $0)
             
-            return Property(name: name,
+            return PropertyMetadata(name: name,
                             type: childType,
                             isStrong: field.isStrong,
                             isVar: field.isVar,
@@ -70,9 +76,9 @@ class PropertyCache {
         }
     }
     
-    func properties(of type: Any.Type) -> [Property] {
-        synchronized(self) {
-            let key = String(describing: type)
+    func properties(of type: Any.Type) -> [PropertyMetadata] {
+        let key = String(describing: type)
+        return synchronized(self) {
             guard let properties = cache[key] else {
                 let properties = enumProperties(of: type)
                 cache[key] = properties

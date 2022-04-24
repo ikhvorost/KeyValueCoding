@@ -24,16 +24,16 @@
 //
 
 
-fileprivate func withPointer<T>(_ object: inout T, kind: MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> Any?) throws -> Any? {
+fileprivate func withPointer<T>(_ instance: inout T, kind: MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> Any?) throws -> Any? {
     switch kind {
     case .struct:
-        return try withUnsafePointer(to: &object) {
+        return try withUnsafePointer(to: &instance) {
             let pointer = UnsafeMutableRawPointer(mutating: $0)
             return try body(pointer)
         }
         
     case .class:
-        return try withUnsafePointer(to: &object) {
+        return try withUnsafePointer(to: &instance) {
             try $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
                 try body($0.pointee)
             }
@@ -45,8 +45,8 @@ fileprivate func withPointer<T>(_ object: inout T, kind: MetadataKind, _ body: (
 }
 
 @discardableResult
-fileprivate func withProperty<T>(_ object: inout T, key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
-    let type = type(of: object)
+fileprivate func withProperty<T>(_ instance: inout T, key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
+    let type = type(of: instance)
     let kind = swift_metadataKind(of: type)
     guard kind == .class || kind == .struct else {
         return nil
@@ -56,7 +56,7 @@ fileprivate func withProperty<T>(_ object: inout T, key: String, _ body: (Access
         return nil
     }
     
-    return try? withPointer(&object, kind: kind) { pointer in
+    return try? withPointer(&instance, kind: kind) { pointer in
         let accessor = AccessorCache.shared.accessor(of: property.type)
         let valuePointer = pointer.advanced(by: property.offset)
         return body(accessor, valuePointer)
@@ -65,55 +65,105 @@ fileprivate func withProperty<T>(_ object: inout T, key: String, _ body: (Access
 
 // MARK: -
 
+/// Returns the metadata kind of the type.
+///
+/// - Parameters:
+///     - type: Type of a metatype instance.
+/// - Returns: Metadata kind of the type.
 public func swift_metadataKind(of type: Any.Type) -> MetadataKind {
     MetadataKind.kind(of: type)
 }
 
-public func swift_metadataKind(of object: Any) -> MetadataKind {
-    let type = type(of: object)
+/// Returns the metadata kind of the instance.
+///
+/// - Parameters:
+///     - instance: Instance of any type.
+/// - Returns: Metadata kind of the type.
+public func swift_metadataKind(of instance: Any) -> MetadataKind {
+    let type = type(of: instance)
     return swift_metadataKind(of: type)
 }
 
-public func swift_properties(of type: Any.Type) -> [Property] {
+/// Returns the array of the receiver's properties.
+///
+/// - Parameters:
+///     - type: Type of a metatype instance.
+/// - Returns: Array of the receiver's properties.
+public func swift_properties(of type: Any.Type) -> [PropertyMetadata] {
     PropertyCache.shared.properties(of: type)
 }
 
-public func swift_properties(of object: Any) -> [Property] {
-    let type = type(of: object)
+/// Returns the array of the receiver's properties.
+///
+/// - Parameters:
+///     - instance: Instance of any type.
+/// - Returns: Array of the receiver's properties.
+public func swift_properties(of instance: Any) -> [PropertyMetadata] {
+    let type = type(of: instance)
     return swift_properties(of: type)
 }
 
-public func swift_value<T>(of object: inout T, key: String) -> Any? {
-    withProperty(&object, key: key) { accessor, valuePointer in
+/// Returns the value for the instance's property identified by a given key.
+///
+/// - Parameters:
+///     - instance: Instance of any type.
+///     - key: The name of one of the receiver's properties.
+/// - Returns: The value for the property identified by key.
+public func swift_value<T>(of instance: inout T, key: String) -> Any? {
+    withProperty(&instance, key: key) { accessor, valuePointer in
         accessor.get(from: valuePointer)
     }
 }
 
-public func swift_setValue<T>(_ value: Any?, key: String, object: inout T) {
-    withProperty(&object, key: key) { accessor, valuePointer in
+/// Sets a property of an instance specified by a given key to a given value.
+///
+/// - Parameters:
+///     - instance: Instance of any type.
+///     - value: The value for the property identified by key.
+///     - key: The name of one of the receiver's properties.
+public func swift_setValue<T>(_ value: Any?, instance: inout T, key: String) {
+    withProperty(&instance, key: key) { accessor, valuePointer in
         accessor.set(value: value as Any, pointer: valuePointer)
     }
 }
 
 // MARK: - KeyValueCoding
 
+/// Protocol to access to the properties of an instance indirectly by name or key.
 public protocol KeyValueCoding {
 }
 
 extension KeyValueCoding {
     
-    public var properties: [Property] {
+    /// Returns the metadata kind of the receiver.
+    public var metadataKind: MetadataKind {
+        swift_metadataKind(of: self)
+    }
+    
+    /// Returns the array of the receiver's properties.
+    public var properties: [PropertyMetadata] {
         swift_properties(of: self)
     }
     
+    /// Returns a value for a property identified by a given key.
+    ///
+    /// - Parameters:
+    ///     - key: The name of one of the receiver's properties.
+    /// - Returns: The value for the property identified by key.
     public mutating func value(key: String) -> Any? {
         swift_value(of: &self, key: key)
     }
     
+    /// Sets a property specified by a given key to a given value.
+    ///
+    /// - Parameters:
+    ///     - value: The value for the property identified by key.
+    ///     - key: The name of one of the receiver's properties.
     public mutating func setValue(_ value: Any?, key: String) {
-        swift_setValue(value, key: key, object: &self)
+        swift_setValue(value, instance: &self, key: key)
     }
     
+    /// Gets and sets a value for a property identified by a given key.
     public subscript(key: String) -> Any? {
         mutating get {
             value(key:key)

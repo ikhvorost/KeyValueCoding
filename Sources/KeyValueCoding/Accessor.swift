@@ -55,8 +55,8 @@ class AccessorCache {
     private var cache = [String : ProtocolTypeContainer]()
     
     func accessor(of type: Any.Type) -> Accessor.Type {
-        synchronized(self) {
-            let key = String(describing: type)
+        let key = String(describing: type)
+        return synchronized(self) {
             guard let container = cache[key] else {
                 let container = ProtocolTypeContainer(type: type)
                 cache[key] = container
