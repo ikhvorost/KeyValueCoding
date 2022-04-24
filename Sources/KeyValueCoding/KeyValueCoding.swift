@@ -24,7 +24,7 @@
 //
 
 
-fileprivate func withPointer<T, U>(_ object: inout T, kind: _MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> U?) throws -> U? {
+fileprivate func withPointer<T>(_ object: inout T, kind: _MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> Any?) throws -> Any? {
     switch kind {
     case .struct:
         return try withUnsafePointer(to: &object) {
@@ -45,7 +45,7 @@ fileprivate func withPointer<T, U>(_ object: inout T, kind: _MetadataKind, _ bod
 }
 
 @discardableResult
-fileprivate func withProperty<T, U>(_ object: inout T, key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> U?) -> U? {
+fileprivate func withProperty<T>(_ object: inout T, key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
     let type = type(of: object)
     let kind = _MetadataKind.kind(of: type)
     guard kind == .class || kind == .struct else {
@@ -74,15 +74,15 @@ public func swift_properties(of object: Any) -> [Property] {
     return swift_properties(of: type)
 }
 
-public func swift_value<T, U>(of object: inout T, key: String) -> U? {
+public func swift_value<T>(of object: inout T, key: String) -> Any? {
     withProperty(&object, key: key) { accessor, valuePointer in
         accessor.get(from: valuePointer)
     }
 }
 
-public func swift_setValue<T>(_ value: Any, key: String, object: inout T) {
+public func swift_setValue<T>(_ value: Any?, key: String, object: inout T) {
     withProperty(&object, key: key) { accessor, valuePointer in
-        accessor.set(value: value, pointer: valuePointer)
+        accessor.set(value: value as Any, pointer: valuePointer)
     }
 }
 
@@ -99,19 +99,20 @@ extension KeyValueCoding {
         swift_properties(of: self)
     }
     
-    public mutating func value<T>(key: String) -> T? {
-        value(key: key) as? T
-    }
-    
     public mutating func value(key: String) -> Any? {
-        withProperty(&self, key: key) { accessor, valuePointer in
-            return accessor.get(from: valuePointer)
-        }
+        swift_value(of: &self, key: key)
     }
     
-    public mutating func setValue<T>(_ value: T, key: String) {
-        withProperty(&self, key: key) { accessor, valuePointer in
-            accessor.set(value: value, pointer: valuePointer)
+    public mutating func setValue(_ value: Any?, key: String) {
+        swift_setValue(value, key: key, object: &self)
+    }
+    
+    public subscript(key: String) -> Any? {
+        mutating get {
+            value(key:key)
+        }
+        set {
+            setValue(newValue as Any, key: key)
         }
     }
 }
