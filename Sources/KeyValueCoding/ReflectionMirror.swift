@@ -47,10 +47,10 @@ func swift_reflectionMirror_recursiveChildMetadata(
 func swift_reflectionMirror_recursiveChildOffset(_: Any.Type, index: Int) -> Int
 
 @_silgen_name("swift_getMetadataKind")
-internal func _metadataKind(_: Any.Type) -> UInt
+func swift_getMetadataKind(_: Any.Type) -> UInt
 
 
-public enum _MetadataKind: UInt {
+public enum MetadataKind: UInt {
     // With "flags":
     // runtimePrivate = 0x100
     // nonHeap = 0x200
@@ -73,8 +73,8 @@ public enum _MetadataKind: UInt {
     case errorObject = 0x501  // 1 | nonType | runtimePrivate
     case unknown = 0xffff
     
-    static func kind(of type: Any.Type) -> _MetadataKind {
-        let kind = _metadataKind(type)
-        return _MetadataKind(rawValue: kind) ?? .unknown
+    static func kind(of type: Any.Type) -> MetadataKind {
+        let kind = swift_getMetadataKind(type)
+        return MetadataKind(rawValue: kind) ?? .unknown
     }
 }

@@ -24,7 +24,7 @@
 //
 
 
-fileprivate func withPointer<T>(_ object: inout T, kind: _MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> Any?) throws -> Any? {
+fileprivate func withPointer<T>(_ object: inout T, kind: MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> Any?) throws -> Any? {
     switch kind {
     case .struct:
         return try withUnsafePointer(to: &object) {
@@ -40,14 +40,14 @@ fileprivate func withPointer<T>(_ object: inout T, kind: _MetadataKind, _ body: 
         }
         
     default:
-        fatalError("Unsupported type")
+        return nil
     }
 }
 
 @discardableResult
 fileprivate func withProperty<T>(_ object: inout T, key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
     let type = type(of: object)
-    let kind = _MetadataKind.kind(of: type)
+    let kind = swift_metadataKind(of: type)
     guard kind == .class || kind == .struct else {
         return nil
     }
@@ -64,6 +64,15 @@ fileprivate func withProperty<T>(_ object: inout T, key: String, _ body: (Access
 }
 
 // MARK: -
+
+public func swift_metadataKind(of type: Any.Type) -> MetadataKind {
+    MetadataKind.kind(of: type)
+}
+
+public func swift_metadataKind(of object: Any) -> MetadataKind {
+    let type = type(of: object)
+    return swift_metadataKind(of: type)
+}
 
 public func swift_properties(of type: Any.Type) -> [Property] {
     PropertyCache.shared.properties(of: type)
@@ -90,8 +99,6 @@ public func swift_setValue<T>(_ value: Any?, key: String, object: inout T) {
 
 public protocol KeyValueCoding {
 }
-
-public typealias KVC = KeyValueCoding
 
 extension KeyValueCoding {
     

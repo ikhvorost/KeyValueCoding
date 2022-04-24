@@ -44,6 +44,19 @@ struct Book: KeyValueCoding {
 
 final class KeyValueCodingTests: XCTestCase {
     
+    func test_metadata() {
+        let user = User()
+        let book = Book()
+        
+        let userType = type(of: user)
+        XCTAssert(swift_metadataKind(of: userType) == .class)
+        XCTAssert(swift_metadataKind(of: user) == .class)
+        
+        let bookType = type(of: book)
+        XCTAssert(swift_metadataKind(of: bookType) == .struct)
+        XCTAssert(swift_metadataKind(of: book) == .struct)
+    }
+    
     func test_class() {
         var user = User()
         
