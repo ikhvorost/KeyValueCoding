@@ -16,5 +16,5 @@ jobs:
     - name: Run tests
       run: |
         swift test --enable-code-coverage -v
-        xcrun llvm-cov export -format="lcov" .build/debug/KeyValueCodingPackageTests.xctest.xctest/contents/macos/KeyValueCodingPackageTests -instr-profile .build/debug/codecov/default.profdata -ignore-filename-regex='Tests' > info.lcov
+        xcrun llvm-cov export -format="lcov" .build/debug/KeyValueCodingPackageTests.xctest/contents/macos/KeyValueCodingPackageTests -instr-profile .build/debug/codecov/default.profdata -ignore-filename-regex='Tests' > info.lcov
         bash <(curl -s https://codecov.io/bash)
