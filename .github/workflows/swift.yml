@@ -10,11 +10,11 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Build
       run: swift build -v
     - name: Run tests
       run: |
         swift test --enable-code-coverage -v
-        xcrun llvm-cov export -format="lcov" .build/debug/KeyValueCodingTests.xctest/contents/macos/KeyValueCodingTests -instr-profile .build/debug/codecov/default.profdata -ignore-filename-regex='Tests' > info.lcov
+        xcrun llvm-cov export -format="lcov" .build/debug/KeyValueCodingPackageTests.xctest.xctest/contents/macos/KeyValueCodingPackageTests -instr-profile .build/debug/codecov/default.profdata -ignore-filename-regex='Tests' > info.lcov
         bash <(curl -s https://codecov.io/bash)
