@@ -10,16 +10,34 @@ enum UserType {
     case admin
 }
 
+class Info: Equatable {
+    let phone: String
+    let email: String
+    
+    init(phone: String, email: String) {
+        self.phone = phone
+        self.email = email
+    }
+    
+    static func == (lhs: Info, rhs: Info) -> Bool {
+        lhs.phone == rhs.phone && lhs.email == rhs.email
+    }
+}
+
 protocol User: KeyValueCoding {
     var id: Int { get }
     var name: String? { get }
     var type: UserType { get }
+    var array: [Int] { get }
+    var info: Info { get }
 }
 
 class UserClass: User {
     let id = 0
     let name: String? = nil
     let type: UserType = .none
+    let array: [Int] = [Int]()
+    let info: Info = Info(phone: "", email: "")
 }
 
 class UserClass2: UserClass {
@@ -30,17 +48,21 @@ class UserClassObjC: NSObject, User {
     @objc let id = 0
     @objc let name: String? = nil
     let type: UserType = .none
+    let array: [Int] = [Int]()
+    let info: Info = Info(phone: "", email: "")
 }
 
 struct UserStruct: User {
     let id = 0
     let name: String? = nil
     let type: UserType = .none
+    let array: [Int] = [Int]()
+    let info: Info = Info(phone: "", email: "")
 }
 
 final class KeyValueCodingTests: XCTestCase {
     
-    func test_keyValueCoding<T: User>(_ instance: inout T, kind: MetadataKind, propertiesCount: Int = 3) {
+    func test_keyValueCoding<T: User>(_ instance: inout T, kind: MetadataKind, propertiesCount: Int = 5) {
         // Metadata
         
         XCTAssert(swift_metadataKind(of: type(of: instance)) == kind)
@@ -61,26 +83,41 @@ final class KeyValueCodingTests: XCTestCase {
         
         // Set value
         
+        let array = [1, 2, 3]
+        let info = Info(phone: "1234567890", email: "mail@domain.com")
+        
         swift_setValue(1, instance: &instance, key: "id")
         swift_setValue("Bob", instance: &instance, key: "name")
         swift_setValue(UserType.admin, instance: &instance, key: "type")
+        swift_setValue(array, instance: &instance, key: "array")
+        swift_setValue(info, instance: &instance, key: "info")
         XCTAssert(instance.id == 1)
         XCTAssert(instance.name == "Bob")
         XCTAssert(instance.type == .admin)
+        XCTAssert(instance.array == array)
+        XCTAssert(instance.info == info)
         
         instance.setValue(2, key: "id")
-        instance.setValue("John", key: "name")
+        instance.setValue(nil, key: "name")
         instance.setValue(UserType.guest, key: "type")
+        instance.setValue([], key: "array")
+        instance.setValue(Info(phone:"", email: ""), key: "info")
         XCTAssert(instance.id == 2)
-        XCTAssert(instance.name == "John")
+        XCTAssert(instance.name == nil)
         XCTAssert(instance.type == .guest)
+        XCTAssert(instance.array == [])
+        XCTAssert(instance.info == Info(phone:"", email: ""))
         
         instance["id"] = 3
         instance["name"] = "Alice"
         instance["type"] = UserType.user
+        instance["array"] = array
+        instance["info"] = info
         XCTAssert(instance.id == 3)
         XCTAssert(instance.name == "Alice")
         XCTAssert(instance.type == .user)
+        XCTAssert(instance.array == array)
+        XCTAssert(instance.info == info)
         
         // Get value
         
@@ -88,16 +125,22 @@ final class KeyValueCodingTests: XCTestCase {
         XCTAssert(swift_value(of: &instance, key: "id") as? Int == 3)
         XCTAssert(swift_value(of: &instance, key: "name") as? String == "Alice")
         XCTAssert(swift_value(of: &instance, key: "type") as? UserType == .user)
+        XCTAssert(swift_value(of: &instance, key: "array") as? [Int] == array)
+        XCTAssert(swift_value(of: &instance, key: "info") as? Info == info)
         
         XCTAssertNil(instance.value(key: "undefined"))
         XCTAssert(instance.value(key: "id") as? Int == 3)
         XCTAssert(instance.value(key: "name") as? String == "Alice")
         XCTAssert(instance.value(key: "type") as? UserType == .user)
+        XCTAssert(instance.value(key: "array") as? [Int] == array)
+        XCTAssert(instance.value(key: "info") as? Info == info)
         
         XCTAssertNil(instance["undefined"])
         XCTAssert(instance["id"] as? Int == 3)
         XCTAssert(instance["name"] as? String == "Alice")
         XCTAssert(instance["type"] as? UserType == .user)
+        XCTAssert(instance["array"] as? [Int] == array)
+        XCTAssert(instance["info"] as? Info == info)
     }
     
     func test_class() {
@@ -107,7 +150,7 @@ final class KeyValueCodingTests: XCTestCase {
     
     func test_class_inheritance() {
         var user = UserClass2()
-        test_keyValueCoding(&user, kind: .class, propertiesCount: 4)
+        test_keyValueCoding(&user, kind: .class, propertiesCount: 6)
         
         user["promoCode"] = 100
         XCTAssert(user["promoCode"] as? Int == 100)
