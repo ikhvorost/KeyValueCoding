@@ -1,5 +1,5 @@
 //
-//  Property.swift
+//  PropertyMetadata.swift
 //
 //  Created by Iurii Khvorost <iurii.khvorost@gmail.com> on 2022/04/22.
 //  Copyright © 2022 Iurii Khvorost. All rights reserved.

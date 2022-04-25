@@ -4,163 +4,122 @@ import KeyValueCoding
 
 
 enum UserType {
-    case admin
-    case guest
     case none
+    case guest
+    case user
+    case admin
 }
 
-class User: KeyValueCoding {
+protocol User: KeyValueCoding {
+    var id: Int { get }
+    var name: String? { get }
+    var type: UserType { get }
+}
+
+class UserClass: User {
     let id = 0
-    let name = ""
-    let birthday: Date? = nil
+    let name: String? = nil
     let type: UserType = .none
 }
 
-class A {
-    let a = 0
+class UserClass2: UserClass {
+    let promoCode: Int = 0
 }
 
-class B : A, KeyValueCoding {
-    let b = 0
+class UserClassObjC: NSObject, User {
+    @objc let id = 0
+    @objc let name: String? = nil
+    let type: UserType = .none
 }
 
-class Object: NSObject, KeyValueCoding {
-    @objc let name: String? = ""
-}
-
-class SomeClass {
-    let i = 0
-    let s = "text"
-    let o: Int? = nil
-}
-
-// Struct
-
-struct Book: KeyValueCoding {
+struct UserStruct: User {
     let id = 0
-    let title = ""
-    let info: String? = nil
+    let name: String? = nil
+    let type: UserType = .none
 }
 
 final class KeyValueCodingTests: XCTestCase {
     
-    func test_metadata() {
-        let user = User()
-        let book = Book()
+    func test_keyValueCoding<T: User>(_ instance: inout T, kind: MetadataKind, propertiesCount: Int = 3) {
+        // Metadata
         
-        let userType = type(of: user)
-        XCTAssert(swift_metadataKind(of: userType) == .class)
-        XCTAssert(swift_metadataKind(of: user) == .class)
-        XCTAssert(user.metadataKind == .class)
+        XCTAssert(swift_metadataKind(of: type(of: instance)) == kind)
+        XCTAssert(swift_metadataKind(of: instance) == kind)
+        XCTAssert(instance.metadataKind == kind)
         
-        let bookType = type(of: book)
-        XCTAssert(swift_metadataKind(of: bookType) == .struct)
-        XCTAssert(swift_metadataKind(of: book) == .struct)
-        XCTAssert(book.metadataKind == .struct)
-    }
-    
-    func test_class() {
-        var user = User()
+        // Properties
         
-        // Set
-        user.setValue(12345, key: "id")
-        user.setValue("Bob", key: "name")
+        XCTAssert(swift_properties(of: type(of: instance)).count == propertiesCount)
+        XCTAssert(swift_properties(of: instance).count == propertiesCount)
+        XCTAssert(instance.properties.count == propertiesCount)
         
-        let date = Date()
-        user.setValue(date, key: "birthday")
-        
-        user.setValue(UserType.admin, key: "type")
-        
-        // Get
-        
-        XCTAssertNil(user.value(key: "undefined"))
-        
-        XCTAssert(user.value(key: "id") as? Int == 12345)
-        XCTAssert(user.value(key: "name") as? String == "Bob")
-        XCTAssert(user.value(key: "birthday") as? Date == date)
-        XCTAssert(user.value(key: "type") as? UserType == .admin)
-        
-        // Set nil
-        user.setValue(nil, key: "birthday")
-        XCTAssertNil(user.value(key: "birthday") as? Date)
-        
-        _ = user.value(key: "id")
-    }
-    
-    func test_subscript() {
-        var user = User()
-        
-        user["id"] = 100
-        user["name"] = "Bob"
-        let date = Date()
-        user["birthday"] = date
-        user["type"] = UserType.admin
-        
-        XCTAssert(user["id"] as? Int == 100)
-        XCTAssert(user["name"] as? String == "Bob")
-        XCTAssert(user["birthday"] as? Date == date)
-        XCTAssert(user["type"] as? UserType == .admin)
-        
-        XCTAssertNil(user["undefined"])
-    }
-    
-    func test_static() {
-        var some = SomeClass()
-        
-        XCTAssert(swift_metadataKind(of: some) == .class)
-        
-        XCTAssert(swift_properties(of: some).count == 3)
-        XCTAssert(swift_properties(of: some.self).count == 3)
-        
-        swift_setValue(11, instance: &some, key: "i")
-        
-        XCTAssert(swift_value(of: &some, key: "i") as? Int  == 11)
-        
-        _ = swift_value(of: &some, key: "i")
-    }
-    
-    func test_inheritance() {
-        var b = B()
-        
-        XCTAssert(b.properties.count == 2)
-        
-        b.setValue(10, key: "a")
-        b.setValue(20, key: "b")
-        
-        XCTAssert(b.value(key: "a") as? Int == 10)
-        XCTAssert(b.value(key: "b") as? Int == 20)
-    }
-    
-    func test_properties() {
-        let user = User()
-        
-        XCTAssert(user.properties.count == 4)
-        
-        let property = user.properties[0]
+        let property = instance.properties[0]
         XCTAssert(property.name == "id")
         XCTAssert(property.type is Int.Type)
         XCTAssert(property.isStrong)
         XCTAssert(property.isVar == false)
+        
+        // Set value
+        
+        swift_setValue(1, instance: &instance, key: "id")
+        swift_setValue("Bob", instance: &instance, key: "name")
+        swift_setValue(UserType.admin, instance: &instance, key: "type")
+        XCTAssert(instance.id == 1)
+        XCTAssert(instance.name == "Bob")
+        XCTAssert(instance.type == .admin)
+        
+        instance.setValue(2, key: "id")
+        instance.setValue("John", key: "name")
+        instance.setValue(UserType.guest, key: "type")
+        XCTAssert(instance.id == 2)
+        XCTAssert(instance.name == "John")
+        XCTAssert(instance.type == .guest)
+        
+        instance["id"] = 3
+        instance["name"] = "Alice"
+        instance["type"] = UserType.user
+        XCTAssert(instance.id == 3)
+        XCTAssert(instance.name == "Alice")
+        XCTAssert(instance.type == .user)
+        
+        // Get value
+        
+        XCTAssertNil(swift_value(of: &instance, key: "undefined"))
+        XCTAssert(swift_value(of: &instance, key: "id") as? Int == 3)
+        XCTAssert(swift_value(of: &instance, key: "name") as? String == "Alice")
+        XCTAssert(swift_value(of: &instance, key: "type") as? UserType == .user)
+        
+        XCTAssertNil(instance.value(key: "undefined"))
+        XCTAssert(instance.value(key: "id") as? Int == 3)
+        XCTAssert(instance.value(key: "name") as? String == "Alice")
+        XCTAssert(instance.value(key: "type") as? UserType == .user)
+        
+        XCTAssertNil(instance["undefined"])
+        XCTAssert(instance["id"] as? Int == 3)
+        XCTAssert(instance["name"] as? String == "Alice")
+        XCTAssert(instance["type"] as? UserType == .user)
     }
     
-    func test_nsobject() {
-        var object = Object()
+    func test_class() {
+        var user = UserClass()
+        test_keyValueCoding(&user, kind: .class)
+    }
+    
+    func test_class_inheritance() {
+        var user = UserClass2()
+        test_keyValueCoding(&user, kind: .class, propertiesCount: 4)
         
-        object.setValue("objc", key: "name")
-        //object.setValue("objc", forKey: "name")
-        
-        XCTAssert(object.value(key: "name") as? String == "objc")
+        user["promoCode"] = 100
+        XCTAssert(user["promoCode"] as? Int == 100)
+    }
+    
+    func test_class_objc() {
+        var user = UserClassObjC()
+        test_keyValueCoding(&user, kind: .class)
     }
     
     func test_struct() {
-        var book = Book()
-        
-        book.setValue(12345, key: "id")
-        book.setValue("Swift", key: "title")
-        book.setValue("Struct", key: "info")
-        
-        XCTAssert(book.value(key: "id") as? Int == 12345)
-        XCTAssert(book.value(key: "title") as? String == "Swift")
-        XCTAssert(book.value(key: "info") as? String == "Struct")
+        var user = UserStruct()
+        test_keyValueCoding(&user, kind: .struct)
     }
 }
