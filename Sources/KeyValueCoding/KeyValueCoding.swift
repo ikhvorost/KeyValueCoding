@@ -25,22 +25,18 @@
 
 
 fileprivate func withPointer<T>(_ instance: inout T, kind: MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> Any?) throws -> Any? {
-    switch kind {
-    case .struct:
+    if kind == .struct {
         return try withUnsafePointer(to: &instance) {
             let pointer = UnsafeMutableRawPointer(mutating: $0)
             return try body(pointer)
         }
-        
-    case .class:
+    }
+    else { // class
         return try withUnsafePointer(to: &instance) {
             try $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
                 try body($0.pointee)
             }
         }
-        
-    default:
-        return nil
     }
 }
 
@@ -84,20 +80,20 @@ public func swift_metadataKind(of instance: Any) -> MetadataKind {
     return swift_metadataKind(of: type)
 }
 
-/// Returns the array of the receiver's properties.
+/// Returns the array of the type's properties.
 ///
 /// - Parameters:
 ///     - type: Type of a metatype instance.
-/// - Returns: Array of the receiver's properties.
+/// - Returns: Array of the type's properties.
 public func swift_properties(of type: Any.Type) -> [PropertyMetadata] {
     PropertyCache.shared.properties(of: type)
 }
 
-/// Returns the array of the receiver's properties.
+/// Returns the array of the instance's properties.
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
-/// - Returns: Array of the receiver's properties.
+/// - Returns: Array of the instance's properties.
 public func swift_properties(of instance: Any) -> [PropertyMetadata] {
     let type = type(of: instance)
     return swift_properties(of: type)
@@ -107,7 +103,7 @@ public func swift_properties(of instance: Any) -> [PropertyMetadata] {
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
-///     - key: The name of one of the receiver's properties.
+///     - key: The name of one of the instance's properties.
 /// - Returns: The value for the property identified by key.
 public func swift_value<T>(of instance: inout T, key: String) -> Any? {
     withProperty(&instance, key: key) { accessor, valuePointer in
@@ -120,9 +116,9 @@ public func swift_value<T>(of instance: inout T, key: String) -> Any? {
 /// - Parameters:
 ///     - instance: Instance of any type.
 ///     - value: The value for the property identified by key.
-///     - key: The name of one of the receiver's properties.
-public func swift_setValue<T>(_ value: Any?, instance: inout T, key: String) {
-    withProperty(&instance, key: key) { accessor, valuePointer in
+///     - key: The name of one of the instance's properties.
+public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {
+    withProperty(&to, key: key) { accessor, valuePointer in
         accessor.set(value: value as Any, pointer: valuePointer)
     }
 }
@@ -135,12 +131,12 @@ public protocol KeyValueCoding {
 
 extension KeyValueCoding {
     
-    /// Returns the metadata kind of the receiver.
+    /// Returns the metadata kind of the instance.
     public var metadataKind: MetadataKind {
         swift_metadataKind(of: self)
     }
     
-    /// Returns the array of the receiver's properties.
+    /// Returns the array of the instance's properties.
     public var properties: [PropertyMetadata] {
         swift_properties(of: self)
     }
@@ -148,7 +144,7 @@ extension KeyValueCoding {
     /// Returns a value for a property identified by a given key.
     ///
     /// - Parameters:
-    ///     - key: The name of one of the receiver's properties.
+    ///     - key: The name of one of the instance's properties.
     /// - Returns: The value for the property identified by key.
     public mutating func value(key: String) -> Any? {
         swift_value(of: &self, key: key)
@@ -158,9 +154,9 @@ extension KeyValueCoding {
     ///
     /// - Parameters:
     ///     - value: The value for the property identified by key.
-    ///     - key: The name of one of the receiver's properties.
+    ///     - key: The name of one of the instance's properties.
     public mutating func setValue(_ value: Any?, key: String) {
-        swift_setValue(value, instance: &self, key: key)
+        swift_setValue(value, to: &self, key: key)
     }
     
     /// Gets and sets a value for a property identified by a given key.
@@ -169,7 +165,7 @@ extension KeyValueCoding {
             value(key:key)
         }
         set {
-            setValue(newValue as Any, key: key)
+            setValue(newValue as Any?, key: key)
         }
     }
 }
