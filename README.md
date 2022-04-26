@@ -19,10 +19,10 @@ KeyValueCoding protocol provides a mechanism by which you can access the propert
   - [setValue(_:, key:)](#setvalue_-key)
   - [[key]](#key)
 - [Functions](#functions)
-  - [swift_metadataKind(of:)]()
-  - [swift_properties(of:)]()
-  - [swift_value(of:, key:)]()
-  - [swift_setValue<T>(_:, to:, key:)]()
+  - [swift_metadataKind(of:)](swift_metadatakindof)
+  - [swift_properties(of:)](swift_propertiesof)
+  - [swift_value(of:, key:)](swift_valueof-key)
+  - [swift_setValue<T>(_:, to:, key:)](swift_setvalue_-to-key)
 - [Installation](#installation)
 - [License](#license)
 
@@ -161,7 +161,7 @@ print(book.metadataKind) // MetadataKind.struct
 
 ### properties
 
-Returns the array of the instance's properties.
+Returns the array of the instance properties.
 
 ```swift
 let user = User()
@@ -218,11 +218,59 @@ if let type = user["type"] as? UserType {
 }
 ```
 
+## Functions
+
+Global functions to set, get and retrieve metadata information from any instance or type without adopting `KeyValueCoding` protocol.
+
+### swift_metadataKind(of:)
+
+Returns the metadata kind of the instance or type.
+
+```swift
+var song = Song()
+
+print(swift_metadataKind(of: song)) // MetadataKind.struct
+// OR
+print(swift_metadataKind(of: type(of: song))) // MetadataKind.struct
+// OR
+print(swift_metadataKind(of: Song.self)) // MetadataKind.struct
+```
+
+### swift_properties(of:)
+
+Returns the array of the instance or type properties.
+
+```swift
+var song = Song()
+
+let properties = swift_properties(of: song)
+// OR
+swift_properties(of: type(of:song))
+// OR
+swift_properties(of: Song.self)
+
+properties.forEach {
+    print($0)
+}
+```
+
+Outputs:
+
+```
+PropertyMetadata(name: "name", type: Swift.String, isStrong: true, isVar: false, offset: 0)
+PropertyMetadata(name: "artist", type: Swift.String, isStrong: true, isVar: false, offset: 16)
+```
+
+### swift_value(of:, key:)
+
+### swift_setValue(_:, to:, key:)
+
+
 ## Installation
 
 ### XCode
 
-1. Select `Xcode > File > Swift Packages > Add Package Dependency...`
+1. Select `Xcode > File > Add Packages...`
 2. Add package repository: `https://github.com/ikhvorost/KeyValueCoding.git`
 3. Import the package in your source files: `import KeyValueCoding`
 
@@ -251,8 +299,8 @@ let package = Package(
 
 KeyValueCoding is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
 
-<form action="https://www.paypal.com/donate" method="post" target="_top" align="center">
-<input type="hidden" name="hosted_button_id" value="TSPDD3ZAAH24C" />
-<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
-<img alt="" border="0" src="https://www.paypal.com/en_UA/i/scr/pixel.gif" width="1" height="1" />
-</form>
+<p align="center">
+
+[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/donate/?hosted_button_id=TSPDD3ZAAH24C)
+
+</p>
