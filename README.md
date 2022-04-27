@@ -11,26 +11,34 @@
 
 KeyValueCoding protocol provides a mechanism by which you can access the properties of pure Swift struct or class instances indirectly by name or key.
 
-- [Overview](#Overview)
+- [Getting Started](#gettingstarted)
+  - [Basics](#basics)
+  - [Subscript](#subscript)
+  - [Class Inheritance](#class-inheritance)
+  - [NSObject](#nsobject)
+  - [Struct](#struct)
+  - [Functions](#functions)
 - [KeyValueCoding Protocol](#keyvaluecoding-protocol)
   - [metadataKind](#metadatakind)
   - [properties](#properties)
   - [value(key:)](#valuekey)
   - [setValue(_:, key:)](#setvalue_-key)
   - [[key]](#key)
-- [Functions](#functions)
-  - [swift_metadataKind(of:)](swift_metadatakindof)
-  - [swift_properties(of:)](swift_propertiesof)
-  - [swift_value(of:, key:)](swift_valueof-key)
-  - [swift_setValue<T>(_:, to:, key:)](swift_setvalue_-to-key)
+- [API](#api)
+  - [swift_metadataKind(of:)](#swift_metadatakindof)
+  - [swift_properties(of:)](#swift_propertiesof)
+  - [swift_value(of:, key:)](#swift_valueof-key)
+  - [swift_setValue<T>(_:, to:, key:)](#swift_setvalue_-to-key)
 - [Installation](#installation)
 - [License](#license)
 
-## Overview
+## Getting Started
 
-The basic methods of `KeyValueCoding` protocol for accessing an instance’s values are `setValue(_ value: Any?, key: String)`, which sets the value for the property identified by the specified key, and `value(key: String) -> Any?`, which returns the value for the property identified by the specified key. Thus, all of an instance’s properties including properties with `enum` and `Optional` types can be accessed in a consistent manner.
+## Basics
 
-In order to make your own instances key-value coding compliant just adopt them from the `KeyValueCoding` protocol:
+The basic methods of `KeyValueCoding` protocol for accessing an instance’s values are `setValue(_ value: Any?, key: String)`, which sets the value for the property identified by the specified key, and `value(key: String) -> Any?`, which returns the value for the property identified by the specified key. Thus, all of an instance’s properties (including properties with `enum` ,`Optional` and etc. types) can be accessed in a consistent manner.
+
+In order to make your types key-value coding compliant just adopt them from the `KeyValueCoding` protocol:
 
 ```swift
 enum UserType {
@@ -65,6 +73,8 @@ else {
 print(id, type, name, ssn) // 123 guest Bob 123456789
 ```
 
+### Subscript
+
 You can also use subscripts to set and retrieve values by key without needing separate methods for setting and retrieval:
 
 ```swift
@@ -86,6 +96,29 @@ else {
 print(id, type, name, ssn) // 123 guest Bob 123456789
 ```
 
+### Class Inheritance
+
+Properties from inherited classes are also accessible by `KeyValueCoding` protocol:
+
+```swift
+class A: KeyValueCoding {
+    let a = 0
+}
+
+class B: A {
+    let b = 0
+}
+
+var b = B()
+
+b["a"] = 1
+b["b"] = 2
+
+print(b["a"]!, b["b"]!) // 1 2
+```
+
+### NSObject
+
 `KeyValueCoding` doesn't conflict with key-value conding of `NSObject` class and they can work together:
 
 ``` swift
@@ -105,7 +138,9 @@ resolution.setValue(760, key: "height")
 print(resolution.width, resolution.height) // 1024 760
 ```
 
-The same works with structs as well:
+### Struct
+
+`KeyValueCoding` works with structs as well:
 
 ```swift
 struct Book: KeyValueCoding {
@@ -121,15 +156,17 @@ book["ISBN"] = 1234567890
 print(book) // Book(title: "The Swift Programming Language", ISBN: 1234567890)
 ```
 
-In additional there are also global functions to set and get values of properties without adopting `KeyValueCoding` protocol:
+### Functions
+
+In additional there are also API functions to set and get values of properties without adopting `KeyValueCoding` protocol:
 
 ``` swift
 struct Song {
-    let name: String = ""
-    let artist: String = ""
+    let name: String
+    let artist: String
 }
 
-var song = Song()
+var song = Song(name: "", artist: "")
 
 swift_setValue("Blue Suede Shoes", to: &song, key: "name")
 swift_setValue("Elvis Presley", to: &song, key: "artist")
@@ -218,9 +255,9 @@ if let type = user["type"] as? UserType {
 }
 ```
 
-## Functions
+## API
 
-Global functions to set, get and retrieve metadata information from any instance or type without adopting `KeyValueCoding` protocol.
+Global functions to set, get and retrieve metadata information from any instance or type (even without adopting `KeyValueCoding` protocol).
 
 ### swift_metadataKind(of:)
 
@@ -263,8 +300,32 @@ PropertyMetadata(name: "artist", type: Swift.String, isStrong: true, isVar: fals
 
 ### swift_value(of:, key:)
 
+Returns the value for the instance's property identified by a given key.
+
+```swift
+var song = Song(name: "Blue Suede Shoes", artist: "Elvis Presley")
+
+guard let name = swift_value(of: &song, key: "name"),
+      let aritst = swift_value(of: &song, key: "artist")
+else {
+    return
+}
+
+print(name, "-", aritst) // Blue Suede Shoes - Elvis Presley
+```
+
 ### swift_setValue(_:, to:, key:)
 
+Sets a property of an instance specified by a given key to a given value.
+
+```swift
+var song = Song(name: "", artist: "")
+
+swift_setValue("Blue Suede Shoes", to: &song, key: "name")
+swift_setValue("Elvis Presley", to: &song, key: "artist")
+
+print(song.name, "-", song.artist) // Blue Suede Shoes - Elvis Presley
+```
 
 ## Installation
 
@@ -299,8 +360,4 @@ let package = Package(
 
 KeyValueCoding is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
 
-<p align="center">
-
 [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/donate/?hosted_button_id=TSPDD3ZAAH24C)
-
-</p>
