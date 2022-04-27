@@ -24,7 +24,7 @@ class Info: Equatable {
     }
 }
 
-protocol User: KeyValueCoding {
+protocol UserProtocol: KeyValueCoding {
     var id: Int { get }
     var name: String? { get }
     var type: UserType { get }
@@ -32,7 +32,7 @@ protocol User: KeyValueCoding {
     var info: Info { get }
 }
 
-class UserClass: User {
+class UserClass: UserProtocol {
     let id = 0
     let name: String? = nil
     let type: UserType = .none
@@ -44,15 +44,15 @@ class UserClass2: UserClass {
     let promoCode: Int = 0
 }
 
-class UserClassObjC: NSObject, User {
+class UserClassObjC: NSObject, UserProtocol {
     @objc let id = 0
     @objc let name: String? = nil
     let type: UserType = .none
-    let array: [Int] = [Int]()
+    @objc let array: [Int] = [Int]()
     let info: Info = Info(phone: "", email: "")
 }
 
-struct UserStruct: User {
+struct UserStruct: UserProtocol {
     let id = 0
     let name: String? = nil
     let type: UserType = .none
@@ -62,7 +62,7 @@ struct UserStruct: User {
 
 final class KeyValueCodingTests: XCTestCase {
     
-    func test_keyValueCoding<T: User>(_ instance: inout T, kind: MetadataKind, propertiesCount: Int = 5) {
+    func test_keyValueCoding<T: UserProtocol>(_ instance: inout T, kind: MetadataKind, propertiesCount: Int = 5) {
         // Metadata
         
         XCTAssert(swift_metadataKind(of: type(of: instance)) == kind)
@@ -86,11 +86,11 @@ final class KeyValueCodingTests: XCTestCase {
         let array = [1, 2, 3]
         let info = Info(phone: "1234567890", email: "mail@domain.com")
         
-        swift_setValue(1, instance: &instance, key: "id")
-        swift_setValue("Bob", instance: &instance, key: "name")
-        swift_setValue(UserType.admin, instance: &instance, key: "type")
-        swift_setValue(array, instance: &instance, key: "array")
-        swift_setValue(info, instance: &instance, key: "info")
+        swift_setValue(1, to: &instance, key: "id")
+        swift_setValue("Bob", to: &instance, key: "name")
+        swift_setValue(UserType.admin, to: &instance, key: "type")
+        swift_setValue(array, to: &instance, key: "array")
+        swift_setValue(info, to: &instance, key: "info")
         XCTAssert(instance.id == 1)
         XCTAssert(instance.name == "Bob")
         XCTAssert(instance.type == .admin)
@@ -164,5 +164,25 @@ final class KeyValueCodingTests: XCTestCase {
     func test_struct() {
         var user = UserStruct()
         test_keyValueCoding(&user, kind: .struct)
+    }
+    
+    func test_fail() {
+        var user = UserClass()
+        
+        // Optional kind
+        var optional: UserProtocol? = user
+        XCTAssertNil(swift_value(of: &optional, key: "id"))
+        
+        // Set wrong type
+        user["id"] = "Hello"
+        user["name"] = 11
+        user["type"] = nil
+        user["array"] = ["1", "2"]
+        user["info"] = "123"
+        XCTAssert(user.id == 0)
+        XCTAssertNil(user.name)
+        XCTAssert(user.type == .none)
+        XCTAssert(user.array.isEmpty == true)
+        XCTAssert(user.info.phone.isEmpty && user.info.email.isEmpty)
     }
 }
