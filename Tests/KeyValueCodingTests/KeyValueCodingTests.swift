@@ -166,12 +166,22 @@ final class KeyValueCodingTests: XCTestCase {
         test_keyValueCoding(&user, kind: .struct)
     }
     
+    func test_protocol() {
+        var optional: UserProtocol? = UserClass()
+        optional?["id"] = 123
+        
+        XCTAssert(optional?["id"] as? Int == 123)
+        XCTAssert(optional?.value(key: "id") as? Int == 123)
+        
+        // Existential
+        XCTAssertNil(swift_value(of: &(optional!), key: "id"))
+        
+        // Optional
+        XCTAssertNil(swift_value(of: &optional, key: "id"))
+    }
+    
     func test_fail() {
         var user = UserClass()
-        
-        // Optional kind
-        var optional: UserProtocol? = user
-        XCTAssertNil(swift_value(of: &optional, key: "id"))
         
         // Set wrong type
         user["id"] = "Hello"

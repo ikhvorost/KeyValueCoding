@@ -24,38 +24,29 @@
 //
 
 
-fileprivate func withPointer<T>(_ instance: inout T, kind: MetadataKind, _ body: (UnsafeMutableRawPointer) throws -> Any?) throws -> Any? {
-    if kind == .struct {
-        return try withUnsafePointer(to: &instance) {
-            let pointer = UnsafeMutableRawPointer(mutating: $0)
-            return try body(pointer)
-        }
-    }
-    else { // class
-        return try withUnsafePointer(to: &instance) {
-            try $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
-                try body($0.pointee)
-            }
-        }
+fileprivate func withPointer<T>(_ instance: inout T, kind: MetadataKind, _ body: (UnsafeMutableRawPointer) -> Any?) -> Any? {
+    withUnsafePointer(to: &instance) {
+        kind == .struct
+        ? body(UnsafeMutableRawPointer(mutating: $0))
+        : $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) { body($0.pointee) } // class
     }
 }
 
 @discardableResult
 fileprivate func withProperty<T>(_ instance: inout T, key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
-    let type = type(of: instance)
+    let type = T.self
     let kind = swift_metadataKind(of: type)
-    guard kind == .class || kind == .struct else {
+    guard (kind == .class || kind == .struct),
+          let property = (swift_properties(of: type).first { $0.name == key })
+    else {
         return nil
     }
     
-    guard let property = (swift_properties(of: type).first { $0.name == key }) else {
-        return nil
-    }
+    let accessor = AccessorCache.shared.accessor(of: property.type)
     
-    return try? withPointer(&instance, kind: kind) { pointer in
-        let accessor = AccessorCache.shared.accessor(of: property.type)
-        let valuePointer = pointer.advanced(by: property.offset)
-        return body(accessor, valuePointer)
+    return withPointer(&instance, kind: kind) {
+        let pointer = $0.advanced(by: property.offset)
+        return body(accessor, pointer)
     }
 }
 
@@ -106,8 +97,8 @@ public func swift_properties(of instance: Any) -> [PropertyMetadata] {
 ///     - key: The name of one of the instance's properties.
 /// - Returns: The value for the property identified by key.
 public func swift_value<T>(of instance: inout T, key: String) -> Any? {
-    withProperty(&instance, key: key) { accessor, valuePointer in
-        accessor.get(from: valuePointer)
+    withProperty(&instance, key: key) { accessor, pointer in
+        accessor.get(from: pointer)
     }
 }
 
@@ -118,16 +109,15 @@ public func swift_value<T>(of instance: inout T, key: String) -> Any? {
 ///     - value: The value for the property identified by key.
 ///     - key: The name of one of the instance's properties.
 public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {
-    withProperty(&to, key: key) { accessor, valuePointer in
-        accessor.set(value: value as Any, pointer: valuePointer)
+    withProperty(&to, key: key) { accessor, pointer in
+        accessor.set(value: value as Any, pointer: pointer)
     }
 }
 
 // MARK: - KeyValueCoding
 
 /// Protocol to access to the properties of an instance indirectly by name or key.
-public protocol KeyValueCoding {
-}
+public protocol KeyValueCoding {}
 
 extension KeyValueCoding {
     
