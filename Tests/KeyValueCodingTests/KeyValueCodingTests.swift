@@ -60,9 +60,27 @@ struct UserStruct: UserProtocol {
     let info: Info = Info(phone: "", email: "")
 }
 
+protocol BookProtocol: KeyValueCoding {
+    var title: String {get set}
+}
+
+struct Book: BookProtocol {
+    var title: String = ""
+    var ISBN: Int = 0
+    var description: String = ""
+}
+
+protocol SongProtocol: KeyValueCoding {
+    var name: String { get set }
+}
+
+struct Song: SongProtocol {
+    var name: String
+}
+
 final class KeyValueCodingTests: XCTestCase {
     
-    func test_keyValueCoding<T: UserProtocol>(_ instance: inout T, kind: MetadataKind, propertiesCount: Int = 5) {
+    func test_keyValueCoding<T: UserProtocol>(_ instance: inout T, kind: Metadata.Kind, propertiesCount: Int = 5) {
         // Metadata
         
         XCTAssert(swift_metadataKind(of: type(of: instance)) == kind)
@@ -146,6 +164,11 @@ final class KeyValueCodingTests: XCTestCase {
     func test_class() {
         var user = UserClass()
         test_keyValueCoding(&user, kind: .class)
+        
+        // Existential
+        var p: UserProtocol = user
+        swift_setValue(777, to: &p, key: "id")
+        XCTAssert(swift_value(of: &p, key: "id") as? Int == 777)
     }
     
     func test_class_inheritance() {
@@ -164,17 +187,23 @@ final class KeyValueCodingTests: XCTestCase {
     func test_struct() {
         var user = UserStruct()
         test_keyValueCoding(&user, kind: .struct)
+        
+        // Existential
+        var p: UserProtocol = user
+        swift_setValue(777, to: &p, key: "id")
+        XCTAssert(swift_value(of: &p, key: "id") as? Int == 777)
+        
+        var song: SongProtocol = Song(name: "")
+        swift_setValue("Blue Suede Shoes", to: &song, key: "name")
+        XCTAssert(swift_value(of: &song, key: "name") as? String == "Blue Suede Shoes")
     }
     
     func test_protocol() {
-        var optional: UserProtocol? = UserClass()
+        var optional: UserClass? = UserClass()
         optional?["id"] = 123
         
         XCTAssert(optional?["id"] as? Int == 123)
         XCTAssert(optional?.value(key: "id") as? Int == 123)
-        
-        // Existential
-        XCTAssertNil(swift_value(of: &(optional!), key: "id"))
         
         // Optional
         XCTAssertNil(swift_value(of: &optional, key: "id"))

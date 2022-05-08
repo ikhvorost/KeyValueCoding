@@ -16,7 +16,7 @@
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 //  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -37,32 +37,17 @@ extension Accessor {
             pointer.assumingMemoryBound(to: self).pointee = value
         }
     }
+    
+    static var size: Int {
+        MemoryLayout<Self>.size
+    }
 }
 
-fileprivate struct ProtocolTypeContainer {
+struct ProtocolTypeContainer {
     let type: Any.Type
     let witnessTable = 0
     
     var accessor: Accessor.Type {
         unsafeBitCast(self, to: Accessor.Type.self)
-    }
-}
-
-class AccessorCache {
-    
-    static let shared = AccessorCache()
-    
-    private var cache = [String : ProtocolTypeContainer]()
-    
-    func accessor(of type: Any.Type) -> Accessor.Type {
-        let key = String(describing: type)
-        return synchronized(self) {
-            guard let container = cache[key] else {
-                let container = ProtocolTypeContainer(type: type)
-                cache[key] = container
-                return container.accessor
-            }
-            return container.accessor
-        }
     }
 }
