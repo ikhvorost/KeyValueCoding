@@ -83,17 +83,21 @@ final class KeyValueCodingTests: XCTestCase {
     func test_keyValueCoding<T: UserProtocol>(_ instance: inout T, kind: Metadata.Kind, propertiesCount: Int = 5) {
         // Metadata
         
-        XCTAssert(swift_metadataKind(of: type(of: instance)) == kind)
-        XCTAssert(swift_metadataKind(of: instance) == kind)
-        XCTAssert(instance.metadataKind == kind)
+        let metadata = swift_metadata(of: instance)
+        XCTAssert(swift_metadata(of: T.self).kind == kind)
+        XCTAssert(metadata.kind == kind)
+        XCTAssert(instance.metadata.kind == kind)
         
-        // Properties
+        XCTAssert(metadata.properties.count == propertiesCount)
+        XCTAssert(metadata.name.contains("User"))
+        if kind == .class {
+            XCTAssert(metadata.size == 8)
+        }
+        else {
+            XCTAssert(metadata.size == 48)
+        }
         
-        XCTAssert(swift_properties(of: type(of: instance)).count == propertiesCount)
-        XCTAssert(swift_properties(of: instance).count == propertiesCount)
-        XCTAssert(instance.properties.count == propertiesCount)
-        
-        let property = instance.properties[0]
+        let property = instance.metadata.properties[0]
         XCTAssert(property.name == "id")
         XCTAssert(property.type is Int.Type)
         XCTAssert(property.isStrong)
@@ -198,14 +202,13 @@ final class KeyValueCodingTests: XCTestCase {
         XCTAssert(swift_value(of: &song, key: "name") as? String == "Blue Suede Shoes")
     }
     
-    func test_protocol() {
+    func test_optional() {
         var optional: UserClass? = UserClass()
         optional?["id"] = 123
         
         XCTAssert(optional?["id"] as? Int == 123)
         XCTAssert(optional?.value(key: "id") as? Int == 123)
         
-        // Optional
         XCTAssertNil(swift_value(of: &optional, key: "id"))
     }
     

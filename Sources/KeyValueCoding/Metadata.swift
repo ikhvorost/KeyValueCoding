@@ -98,7 +98,7 @@ public struct Metadata {
         public let offset: Int
         
         var accessor: Accessor.Type {
-            let metadata = MetadataCache.shared.metadata(of: type)
+            let metadata = swift_metadata(of: type)
             return metadata.container.accessor
         }
     }
@@ -106,15 +106,8 @@ public struct Metadata {
     public let type: Any.Type
     public let kind: Kind
     public let name: String
-    
-    public var size: Int {
-        container.accessor.size
-    }
-    
+    public var size: Int { container.accessor.size }
     public let properties: [Property]
-
-    //var alignment: Int { get }
-    //var stride: Int { get }
     
     private let container: ProtocolTypeContainer
     

@@ -25,25 +25,25 @@
 
 fileprivate func withPointer<T>(_ instance: inout T, metadata: Metadata, _ body: (UnsafeMutableRawPointer, Metadata) -> Any?) -> Any? {
     withUnsafePointer(to: &instance) {
-        switch metadata.kind {
-        case .struct:
+        let kind = metadata.kind
+        if kind == .struct {
             return body(UnsafeMutableRawPointer(mutating: $0), metadata)
-            
-        case .class:
+        }
+        else if kind == .class {
             return $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
                 body($0.pointee, metadata)
             }
-            
-        case .existential:
+        }
+        else if kind == .existential {
             return $0.withMemoryRebound(to: ExistentialContainer.self, capacity: 1) {
                 let type = $0.pointee.type
-                let metadata = MetadataCache.shared.metadata(of: type)
+                let metadata = swift_metadata(of: type)
                 if metadata.kind == .class {
                     return $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
                         body($0.pointee, metadata)
                     }
                 }
-                else { // struct
+                else if metadata.kind == .struct {
                     if metadata.size > MemoryLayout<ExistentialContainerBuffer>.size {
                         return $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
                             body($0.pointee.advanced(by: 16), metadata)
@@ -53,18 +53,16 @@ fileprivate func withPointer<T>(_ instance: inout T, metadata: Metadata, _ body:
                         return body(UnsafeMutableRawPointer(mutating: $0), metadata)
                     }
                 }
+                return nil
             }
-            
-        default:
-            return nil
         }
+        return nil
     }
 }
 
 @discardableResult
 fileprivate func withProperty<T>(_ instance: inout T, key: String, _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
-    let type = T.self
-    let metadata = MetadataCache.shared.metadata(of: type)
+    let metadata = swift_metadata(of: T.self)
     
     return withPointer(&instance, metadata: metadata) { pointer, metadata in
         guard let property = (metadata.properties.first { $0.name == key }) else {
@@ -78,42 +76,23 @@ fileprivate func withProperty<T>(_ instance: inout T, key: String, _ body: (Acce
 
 // MARK: -
 
-/// Returns the metadata kind of the type.
+/// Returns the metadata of the type.
 ///
 /// - Parameters:
 ///     - type: Type of a metatype instance.
-/// - Returns: Metadata kind of the type.
-public func swift_metadataKind(of type: Any.Type) -> Metadata.Kind {
-    Metadata.Kind.kind(of: type)
+/// - Returns: Metadata of the type.
+public func swift_metadata(of type: Any.Type) -> Metadata {
+    MetadataCache.shared.metadata(of: type)
 }
 
-/// Returns the metadata kind of the instance.
+/// Returns the metadata of the instance.
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
-/// - Returns: Metadata kind of the type.
-public func swift_metadataKind(of instance: Any) -> Metadata.Kind {
+/// - Returns: Metadata of the type.
+public func swift_metadata(of instance: Any) -> Metadata {
     let type = type(of: instance)
-    return swift_metadataKind(of: type)
-}
-
-/// Returns the array of the type's properties.
-///
-/// - Parameters:
-///     - type: Type of a metatype instance.
-/// - Returns: Array of the type's properties.
-public func swift_properties(of type: Any.Type) -> [Metadata.Property] {
-    MetadataCache.shared.metadata(of: type).properties
-}
-
-/// Returns the array of the instance's properties.
-///
-/// - Parameters:
-///     - instance: Instance of any type.
-/// - Returns: Array of the instance's properties.
-public func swift_properties(of instance: Any) -> [Metadata.Property] {
-    let type = type(of: instance)
-    return swift_properties(of: type)
+    return swift_metadata(of: type)
 }
 
 /// Returns the value for the instance's property identified by a given key.
@@ -147,14 +126,9 @@ public protocol KeyValueCoding {}
 
 extension KeyValueCoding {
     
-    /// Returns the metadata kind of the instance.
-    public var metadataKind: Metadata.Kind {
-        swift_metadataKind(of: self)
-    }
-    
-    /// Returns the array of the instance's properties.
-    public var properties: [Metadata.Property] {
-        swift_properties(of: self)
+    /// Returns the metadata of the instance.
+    public var metadata: Metadata {
+        swift_metadata(of: self)
     }
     
     /// Returns a value for a property identified by a given key.
