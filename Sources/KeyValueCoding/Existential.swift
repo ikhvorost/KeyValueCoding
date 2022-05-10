@@ -25,6 +25,7 @@
 
 import Foundation
 
+let ExistentialHeaderSize = 16 // 64bit
 
 struct ExistentialContainer {
     let buffer: ExistentialContainerBuffer

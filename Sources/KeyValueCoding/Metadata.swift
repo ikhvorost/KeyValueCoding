@@ -88,28 +88,27 @@ public struct Metadata {
     public struct Property {
         /// Name of property.
         public let name: String
-        /// Type of property.
-        public let type: Any.Type
+        
         /// Is strong referenced property.
         public let isStrong: Bool
+        
         /// Is variable property.
         public let isVar: Bool
+        
         /// Offset of property.
         public let offset: Int
         
-        var accessor: Accessor.Type {
-            let metadata = swift_metadata(of: type)
-            return metadata.container.accessor
-        }
+        public let metadata: Metadata
     }
+    
+    private let container: ProtocolTypeContainer
+    
+    var accessor: Accessor.Type { container.accessor }
     
     public let type: Any.Type
     public let kind: Kind
-    public let name: String
-    public var size: Int { container.accessor.size }
+    public var size: Int { accessor.size }
     public let properties: [Property]
-    
-    private let container: ProtocolTypeContainer
     
     private static func enumProperties(type: Any.Type, kind: Kind) -> [Property] {
         guard kind == .class || kind == .struct else {
@@ -117,28 +116,30 @@ public struct Metadata {
         }
         
         let count = swift_reflectionMirror_recursiveCount(type)
-        var field = _FieldReflectionMetadata()
+        var fieldMetadata = _FieldReflectionMetadata()
         return (0..<count).compactMap {
-            let childType = swift_reflectionMirror_recursiveChildMetadata(type, index: $0, fieldMetadata: &field)
+            let propertyType = swift_reflectionMirror_recursiveChildMetadata(type, index: $0, fieldMetadata: &fieldMetadata)
             
-            defer { field.freeFunc?(field.name) }
-            guard let name = field.name.flatMap({ String(validatingUTF8: $0) }) else {
+            defer { fieldMetadata.freeFunc?(fieldMetadata.name) }
+            guard let propertyName = fieldMetadata.name.flatMap({ String(validatingUTF8: $0) }) else {
                 return nil
             }
             
             let offset = swift_reflectionMirror_recursiveChildOffset(type, index: $0)
             
-            return Property(name: name, type: childType, isStrong: field.isStrong, isVar: field.isVar, offset: offset)
+            return Property(name: propertyName,
+                            isStrong: fieldMetadata.isStrong,
+                            isVar: fieldMetadata.isVar,
+                            offset: offset,
+                            metadata: swift_metadata(of: propertyType))
         }
     }
     
     fileprivate init(type: Any.Type) {
         self.type = type
         self.kind = Kind.kind(of: type)
-        self.name = String(describing: type)
         self.container = ProtocolTypeContainer(type: type)
         self.properties = Self.enumProperties(type: type, kind: self.kind)
-        
     }
 }
 
