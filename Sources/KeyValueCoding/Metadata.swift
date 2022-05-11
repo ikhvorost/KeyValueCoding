@@ -36,7 +36,7 @@ fileprivate func synchronized<T : AnyObject, U>(_ obj: T, closure: () -> U) -> U
     return closure()
 }
 
-
+/// Metadata for a type.
 public struct Metadata {
     
     /// The metadata kind for a type.
@@ -85,8 +85,9 @@ public struct Metadata {
         }
     }
     
+    /// Property details.
     public struct Property {
-        /// Name of property.
+        /// Name of the property.
         public let name: String
         
         /// Is strong referenced property.
@@ -95,9 +96,10 @@ public struct Metadata {
         /// Is variable property.
         public let isVar: Bool
         
-        /// Offset of property.
+        /// Offset of the property.
         public let offset: Int
         
+        /// Metadata of the property.
         public let metadata: Metadata
     }
     
@@ -105,9 +107,16 @@ public struct Metadata {
     
     var accessor: Accessor.Type { container.accessor }
     
+    /// Type.
     public let type: Any.Type
+    
+    /// Kind of the type.
     public let kind: Kind
+    
+    /// Size of the type.
     public var size: Int { accessor.size }
+    
+    /// Accessible properties of the type.
     public let properties: [Property]
     
     private static func enumProperties(type: Any.Type, kind: Kind) -> [Property] {
@@ -150,8 +159,8 @@ class MetadataCache {
     private var cache = [String : Metadata]()
     
     func metadata(of type: Any.Type) -> Metadata {
-        let key = String(describing: type)
-        return synchronized(self) {
+        synchronized(self) {
+            let key = String(describing: type)
             guard let metadata = cache[key] else {
                 let metadata = Metadata(type: type)
                 cache[key] = metadata

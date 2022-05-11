@@ -115,7 +115,7 @@ public func swift_metadata(of instance: Any) -> Metadata {
     return swift_metadata(of: type)
 }
 
-/// Returns the value for the instance's property identified by a given key.
+/// Returns the value for the instance's property identified by a given key or path.
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
@@ -131,7 +131,7 @@ public func swift_value<T>(of instance: inout T, key: String) -> Any? {
     }
 }
 
-/// Sets a property of an instance specified by a given key to a given value.
+/// Sets a property of an instance specified by a given key to a given value or path.
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
@@ -154,12 +154,12 @@ public protocol KeyValueCoding {}
 
 extension KeyValueCoding {
     
-    /// Returns the metadata of the instance.
+    /// Returns the metadata of the instance type.
     public var metadata: Metadata {
         swift_metadata(of: self)
     }
     
-    /// Returns a value for a property identified by a given key.
+    /// Returns a value for a property identified by a given key or path.
     ///
     /// - Parameters:
     ///     - key: The name of one of the instance's properties.
@@ -168,7 +168,7 @@ extension KeyValueCoding {
         swift_value(of: &self, key: key)
     }
     
-    /// Sets a property specified by a given key to a given value.
+    /// Sets a property specified by a given key or path to a given value.
     ///
     /// - Parameters:
     ///     - value: The value for the property identified by key.
@@ -177,7 +177,7 @@ extension KeyValueCoding {
         swift_setValue(value, to: &self, key: key)
     }
     
-    /// Gets and sets a value for a property identified by a given key.
+    /// Gets and sets a value for a property identified by a given key or path.
     public subscript(key: String) -> Any? {
         mutating get {
             value(key: key)
