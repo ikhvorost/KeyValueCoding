@@ -23,6 +23,14 @@
 //  THE SOFTWARE.
 //
 
+fileprivate extension Array {
+    mutating func popFirst() -> Element? {
+        guard count > 0 else {
+            return nil
+        }
+        return removeFirst()
+    }
+}
 
 fileprivate func withPointer<T>(_ instance: inout T, _ body: (UnsafeMutableRawPointer, Metadata) -> Any?) -> Any? {
     withUnsafePointer(to: &instance) {
@@ -62,12 +70,13 @@ fileprivate func withPointer<T>(_ instance: inout T, _ body: (UnsafeMutableRawPo
 }
 
 @discardableResult
-fileprivate func withProperty<T>(_ instance: inout T, keys: inout [String], _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
+fileprivate func withProperty<T>(_ instance: inout T, path: [String], _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
     withPointer(&instance) { pointer, metadata in
-        guard let key = keys.popLast(), let property = (metadata.properties.first { $0.name == key }) else {
+        var keys = path
+        guard let key = keys.popFirst(), let property = (metadata.properties.first { $0.name == key }) else {
             return nil
         }
-
+        
         let pointer = pointer.advanced(by: property.offset)
 
         if keys.isEmpty {
@@ -79,7 +88,7 @@ fileprivate func withProperty<T>(_ instance: inout T, keys: inout [String], _ bo
                     property.metadata.accessor.set(value: value, pointer: pointer)
                 }
             }
-            return withProperty(&value, keys: &keys, body)
+            return withProperty(&value, path: keys, body)
         }
         return nil
     }
@@ -113,8 +122,11 @@ public func swift_metadata(of instance: Any) -> Metadata {
 ///     - key: The name of one of the instance's properties.
 /// - Returns: The value for the property identified by key.
 public func swift_value<T>(of instance: inout T, key: String) -> Any? {
-    var keys = Array(key.components(separatedBy: ".").reversed())
-    return withProperty(&instance, keys: &keys) { accessor, pointer in
+    let path = key.components(separatedBy: ".")
+    guard path.count > 0 else {
+        return nil
+    }
+    return withProperty(&instance, path: path) { accessor, pointer in
         accessor.get(from: pointer)
     }
 }
@@ -126,8 +138,11 @@ public func swift_value<T>(of instance: inout T, key: String) -> Any? {
 ///     - value: The value for the property identified by key.
 ///     - key: The name of one of the instance's properties.
 public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {
-    var keys = Array(key.components(separatedBy: ".").reversed())
-    withProperty(&to, keys: &keys) { accessor, pointer in
+    let path = key.components(separatedBy: ".")
+    guard path.count > 0 else {
+        return
+    }
+    withProperty(&to, path: path) { accessor, pointer in
         accessor.set(value: value as Any, pointer: pointer)
     }
 }
@@ -165,7 +180,7 @@ extension KeyValueCoding {
     /// Gets and sets a value for a property identified by a given key.
     public subscript(key: String) -> Any? {
         mutating get {
-            value(key:key)
+            value(key: key)
         }
         set {
             setValue(newValue, key: key)

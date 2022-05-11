@@ -97,7 +97,9 @@ final class KeyValueCodingTests: XCTestCase {
         XCTAssert(metadata.kind == kind)
         XCTAssert(instance.metadata.kind == kind)
         
-        XCTAssert(metadata.properties.count == propertiesCount)
+        let properties = metadata.properties
+        XCTAssert(properties.count == propertiesCount)
+        
         if kind == .class {
             XCTAssert(metadata.size == 8)
         }
