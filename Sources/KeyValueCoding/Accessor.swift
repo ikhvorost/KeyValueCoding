@@ -28,7 +28,7 @@ protocol Accessor {}
 
 extension Accessor {
     
-    static func get(from pointer: UnsafeRawPointer) -> Any? {
+    static func get(from pointer: UnsafeRawPointer) -> Any {
         return pointer.assumingMemoryBound(to: Self.self).pointee
     }
 

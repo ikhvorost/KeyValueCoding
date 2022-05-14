@@ -23,15 +23,6 @@
 //  THE SOFTWARE.
 //
 
-fileprivate extension Array {
-    mutating func popFirst() -> Element? {
-        guard count > 0 else {
-            return nil
-        }
-        return removeFirst()
-    }
-}
-
 fileprivate func withPointer<T>(_ instance: inout T, _ body: (UnsafeMutableRawPointer, Metadata) -> Any?) -> Any? {
     withUnsafePointer(to: &instance) {
         let metadata = swift_metadata(of: T.self)
@@ -70,22 +61,23 @@ fileprivate func withPointer<T>(_ instance: inout T, _ body: (UnsafeMutableRawPo
 }
 
 @discardableResult
-fileprivate func withProperty<T>(_ instance: inout T, path: [String], _ body: (Accessor.Type, UnsafeMutableRawPointer) -> Any?) -> Any? {
+fileprivate func withProperty<T>(_ instance: inout T, path: [String], _ body: (Metadata, UnsafeMutableRawPointer) -> Any?) -> Any? {
     withPointer(&instance) { pointer, metadata in
         var keys = path
-        guard let key = keys.popFirst(), let property = (metadata.properties.first { $0.name == key }) else {
+        guard let key = keys.popLast(), let property = (metadata.properties.first { $0.name == key }) else {
             return nil
         }
         
         let pointer = pointer.advanced(by: property.offset)
 
         if keys.isEmpty {
-            return body(property.metadata.accessor, pointer)
+            return body(property.metadata, pointer)
         }
-        else if var value = property.metadata.accessor.get(from: pointer) {
+        else if var value = property.metadata.get(from: pointer) {
             defer {
-                if property.metadata.kind == .struct {
-                    property.metadata.accessor.set(value: value, pointer: pointer)
+                let metadata = swift_metadata(of: type(of: value))
+                if metadata.kind == .struct {
+                    property.metadata.set(value: value, pointer: pointer)
                 }
             }
             return withProperty(&value, path: keys, body)
@@ -122,12 +114,9 @@ public func swift_metadata(of instance: Any) -> Metadata {
 ///     - key: The name of one of the instance's properties.
 /// - Returns: The value for the property identified by key.
 public func swift_value<T>(of instance: inout T, key: String) -> Any? {
-    let path = key.components(separatedBy: ".")
-    guard path.count > 0 else {
-        return nil
-    }
-    return withProperty(&instance, path: path) { accessor, pointer in
-        accessor.get(from: pointer)
+    let path: [String] = key.components(separatedBy: ".").reversed()
+    return withProperty(&instance, path: path) { metadata, pointer in
+        metadata.get(from: pointer)
     }
 }
 
@@ -138,12 +127,9 @@ public func swift_value<T>(of instance: inout T, key: String) -> Any? {
 ///     - value: The value for the property identified by key.
 ///     - key: The name of one of the instance's properties.
 public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {
-    let path = key.components(separatedBy: ".")
-    guard path.count > 0 else {
-        return
-    }
-    withProperty(&to, path: path) { accessor, pointer in
-        accessor.set(value: value as Any, pointer: pointer)
+    let path: [String] = key.components(separatedBy: ".").reversed()
+    withProperty(&to, path: path) { metadata, pointer in
+        metadata.set(value: value as Any, pointer: pointer)
     }
 }
 

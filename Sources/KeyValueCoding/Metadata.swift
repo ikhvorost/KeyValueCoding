@@ -105,8 +105,6 @@ public struct Metadata {
     
     private let container: ProtocolTypeContainer
     
-    var accessor: Accessor.Type { container.accessor }
-    
     /// Type.
     public let type: Any.Type
     
@@ -114,7 +112,7 @@ public struct Metadata {
     public let kind: Kind
     
     /// Size of the type.
-    public var size: Int { accessor.size }
+    public var size: Int { container.accessor.size }
     
     /// Accessible properties of the type.
     public let properties: [Property]
@@ -128,15 +126,11 @@ public struct Metadata {
         var fieldMetadata = _FieldReflectionMetadata()
         return (0..<count).compactMap {
             let propertyType = swift_reflectionMirror_recursiveChildMetadata(type, index: $0, fieldMetadata: &fieldMetadata)
-            
             defer { fieldMetadata.freeFunc?(fieldMetadata.name) }
-            guard let propertyName = fieldMetadata.name.flatMap({ String(validatingUTF8: $0) }) else {
-                return nil
-            }
             
             let offset = swift_reflectionMirror_recursiveChildOffset(type, index: $0)
             
-            return Property(name: propertyName,
+            return Property(name: String(cString: fieldMetadata.name!),
                             isStrong: fieldMetadata.isStrong,
                             isVar: fieldMetadata.isVar,
                             offset: offset,
@@ -149,6 +143,22 @@ public struct Metadata {
         self.kind = Kind.kind(of: type)
         self.container = ProtocolTypeContainer(type: type)
         self.properties = Self.enumProperties(type: type, kind: self.kind)
+    }
+    
+    func get(from pointer: UnsafeRawPointer) -> Any? {
+        let value = container.accessor.get(from: pointer)
+        
+        // Optional
+        if kind == .optional {
+            let mirror = Mirror(reflecting: value)
+            return mirror.children.first?.value
+        }
+        
+        return value
+    }
+    
+    func set(value: Any, pointer: UnsafeMutableRawPointer) {
+        container.accessor.set(value: value as Any, pointer: pointer)
     }
 }
 
