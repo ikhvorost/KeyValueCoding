@@ -1,6 +1,6 @@
 # KeyValueCoding
 
-[![Swift: 5.x](https://img.shields.io/badge/Swift-5.x-f48041.svg?style=flat)](https://developer.apple.com/swift)
+[![Swift 5](https://img.shields.io/badge/Swift-5-f48041.svg?style=flat)](https://developer.apple.com/swift)
 ![Platforms: iOS, macOS, tvOS, watchOS](https://img.shields.io/badge/Platforms-iOS%20|%20macOS%20|%20tvOS%20|%20watchOS%20-blue.svg?style=flat)
 [![Swift Package Manager: compatible](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-4BC51D.svg?style=flat)](https://swift.org/package-manager/)
 [![Build](https://github.com/ikhvorost/KeyValueCoding/actions/workflows/swift.yml/badge.svg?branch=main)](https://github.com/ikhvorost/KeyValueCoding/actions/workflows/swift.yml)
@@ -9,7 +9,7 @@
 
 [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/donate/?hosted_button_id=TSPDD3ZAAH24C)
 
-KeyValueCoding protocol provides a mechanism by which you can access the properties of pure Swift struct or class instances indirectly by name or key.
+`KeyValueCoding` provides a mechanism by which you can access the properties of pure Swift struct or class instances indirectly by a property name or a key path.
 
 - [Getting Started](#gettingstarted)
   - [Basics](#basics)
@@ -19,14 +19,12 @@ KeyValueCoding protocol provides a mechanism by which you can access the propert
   - [Struct](#struct)
   - [Functions](#functions)
 - [KeyValueCoding Protocol](#keyvaluecoding-protocol)
-  - [metadataKind](#metadatakind)
-  - [properties](#properties)
+  - [metadata](#metadata)
   - [value(key:)](#valuekey)
   - [setValue(_:, key:)](#setvalue_-key)
   - [[key]](#key)
 - [API](#api)
-  - [swift_metadataKind(of:)](#swift_metadatakindof)
-  - [swift_properties(of:)](#swift_propertiesof)
+  - [swift_metadata()](#swift_metadata)
   - [swift_value(of:, key:)](#swift_valueof-key)
   - [swift_setValue<T>(_:, to:, key:)](#swift_setvalue_-to-key)
 - [Installation](#installation)
@@ -36,11 +34,25 @@ KeyValueCoding protocol provides a mechanism by which you can access the propert
 
 ## Basics
 
-The basic methods of `KeyValueCoding` protocol for accessing an instance’s values are `setValue(_ value: Any?, key: String)`, which sets the value for the property identified by the specified key, and `value(key: String) -> Any?`, which returns the value for the property identified by the specified key. Thus, all of an instance’s properties (including properties with `enum` ,`Optional` and etc. types) can be accessed in a consistent manner.
+The basic methods of `KeyValueCoding` protocol for accessing an instance’s values are `setValue(_ value: Any?, key: String)`, which sets the value for the property identified by the specified name or key path, and `value(key: String) -> Any?`, which returns the value for the property identified by the specified name or key path.
 
-In order to make your types key-value coding compliant just adopt them from the `KeyValueCoding` protocol:
+Thus, **all of the properties** can be accessible in a consistent manner including:
+
+- Constant `let` and variable `var` properties.
+- Properties with any access level: `public`, `internal`, `private`.
+- Properties of any type: `enum`, `optional`, `struct`, `class` etc.
+- Relationship properties by the key path form "relationship.property" (with one or more relationships), for example "contactInfo.email" etc.
+
+There are **next limitations**:
+
+- Computed properties are not addressable.
+- The `willSet` and `didSet` observers aren’t called while you set values.
+
+In order to make your types key-value coding compliant just adopt them from the `KeyValueCoding` protocol, for instance:
 
 ```swift
+import KeyValueCoding
+
 enum UserType {
     case none
     case guest
@@ -48,11 +60,17 @@ enum UserType {
     case admin
 }
 
+class ContactInfo {
+    let phone: String = ""
+    let email: String = ""
+}
+
 class User: KeyValueCoding {
-    let id: Int = 0
+    private let id: Int = 0
     let type: UserType = .none
     let name: String = ""
     let SSN: Int? = nil
+    let contactInfo = ContactInfo()
 }
 
 var user = User()
@@ -61,21 +79,23 @@ user.setValue(123, key: "id")
 user.setValue(UserType.guest, key: "type")
 user.setValue("Bob", key: "name")
 user.setValue(123456789, key: "SSN")
+user.setValue("bob@mail.com", key: "contactInfo.email")
 
-guard let id = user.value(key: "id") as? Int,
-      let type = user.value(key: "type") as? UserType,
-      let name = user.value(key: "name") as? String,
-      let ssn = user.value(key: "SSN") as? Int
+guard let id = user.value(key: "id"),
+      let type = user.value(key: "type"),
+      let name = user.value(key: "name"),
+      let ssn = user.value(key: "SSN"),
+      let email = user.value(key: "contactInfo.email")
 else {
     return
 }
 
-print(id, type, name, ssn) // 123 guest Bob 123456789
+print(id, type, name, ssn, email) // 123 guest Bob 123456789 bob@mail.com
 ```
 
 ### Subscript
 
-You can also use subscripts to set and retrieve values by key without needing separate methods for setting and retrieval:
+You can also use subscripts to set and retrieve values by a name or a key path without needing separate methods for setting and retrieval:
 
 ```swift
 var user = User()
@@ -84,16 +104,18 @@ user["id"] = 123
 user["type"] = UserType.guest
 user["name"] = "Bob"
 user["SSN"] = 123456789
+user["contactInfo.email"] = "bob@mail.com"
 
-guard let id = user["id"] as? Int,
-      let type = user["type"] as? UserType,
-      let name = user["name"] as? String,
-      let ssn = user["SSN"] as? Int
+guard let id = user["id"],
+      let type = user["type"],
+      let name = user["name"],
+      let ssn = user["SSN"],
+      let email = user["contactInfo.email"]
 else {
     return
 }
 
-print(id, type, name, ssn) // 123 guest Bob 123456789
+print(id, type, name, ssn, email) // 123 guest Bob 123456789 bob@mail.com
 ```
 
 ### Class Inheritance
@@ -111,10 +133,13 @@ class B: A {
 
 var b = B()
 
-b["a"] = 1
-b["b"] = 2
+b["a"] = 100
+b["b"] = 200
 
-print(b["a"]!, b["b"]!) // 1 2
+guard let a = b["a"], let b = b["b"] else {
+    return
+}
+print(a, b) // 100 200
 ```
 
 ### NSObject
@@ -129,11 +154,13 @@ class Resolution: NSObject, KeyValueCoding {
 
 var resolution = Resolution()
 
-// NSObject: setValue(_ value: Any?, forKey key: String)
+// NSObject protocol
 resolution.setValue(1024, forKey: "width")
 
-// KeyValueCoding: setValue(_ value: Any?, key: String)
+// KeyValueCoding protocol
 resolution.setValue(760, key: "height")
+// OR
+resolution["height"] = 760
 
 print(resolution.width, resolution.height) // 1024 760
 ```
@@ -158,7 +185,7 @@ print(book) // Book(title: "The Swift Programming Language", ISBN: 1234567890)
 
 ### Functions
 
-In additional there are also API functions to set and get values of properties without adopting `KeyValueCoding` protocol:
+In additional you can use API functions to set and get values of any properties **without adopting** `KeyValueCoding` protocol at all:
 
 ``` swift
 struct Song {
@@ -184,123 +211,97 @@ print(name, "-", artist) // Blue Suede Shoes - Elvis Presley
 
 Swift instances of `struct` or `class` that adopt `KeyValueCoding` protocol are key-value coding compliant for their properties and they are addressable via essential methods `value(key:)` and `setValue(_: key:)`.
 
-### metadataKind
 
-Returns the metadata kind of the instance.
+### metadata
 
-```swift
-let user = User()
-print(user.metadataKind) // MetadataKind.class
-
-let book = Book()
-print(book.metadataKind) // MetadataKind.struct
-```
-
-### properties
-
-Returns the array of the instance properties.
+Returns the metadata of the instance which includes its `type`, `kind`, `size` and a list of accessible `properties`:
 
 ```swift
 let user = User()
-user.properties.forEach {
-    print($0)
-}
+
+print(user.metadata)
 ```
 
 Outputs:
 
 ```
-PropertyMetadata(name: "id", type: Swift.Int, isStrong: true, isVar: false, offset: 16)
-PropertyMetadata(name: "type", type: KeyValueCodingTests.UserType, isStrong: true, isVar: false, offset: 24)
-PropertyMetadata(name: "name", type: Swift.String, isStrong: true, isVar: false, offset: 32)
-PropertyMetadata(name: "SSN", type: Swift.Optional<Swift.Int>, isStrong: true, isVar: false, offset: 48)
+Metadata(type: User, kind: .class, size: 8, properties: [
+  Property(name: 'id', isStrong: true, isVar: false, offset: 16),
+  Property(name: 'type', isStrong: true, isVar: false, offset: 24),
+  Property(name: 'name', isStrong: true, isVar: false, offset: 32),
+  Property(name: 'SSN', isStrong: true, isVar: false, offset: 48)])
 ```
 
 ### value(key:)
 
-Returns a value for a property identified by a given key.
+Returns a value for a property identified by a given name or key path.
 
 ```swift
 var user = User()
-if let type = user.value(key: "type") as? UserType {
+if let type = user.value(key: "type") {
     print(type) // none
 }
 ```
 
 ### setValue(_:, key:)
 
-Sets a property specified by a given key to a given value.
+Sets a property specified by a given name or key path to a given value.
 
 ```swift
 var user = User()
 
 user.setValue(UserType.admin, key: "type")
 
-if let type = user.value(key: "type") as? UserType {
+if let type = user.value(key: "type") {
     print(type) // admin
 }
 ```
 
 ### [key]
 
-Gets and sets a value for a property identified by a given key.
+Gets and sets a value for a property identified by a name or a key path.
 
 ```swift
 var user = User()
 
 user["type"] = UserType.guest
 
-if let type = user["type"] as? UserType {
+if let type = user["type"] {
     print(type) // guest
 }
 ```
 
 ## API
 
-Global functions to set, get and retrieve metadata information from any instance or type (even without adopting `KeyValueCoding` protocol).
+Global API functions to set, get and retrieve metadata information from any instance or type **even without adopting** `KeyValueCoding` protocol.
 
-### swift_metadataKind(of:)
+### swift_metadata()
 
-Returns the metadata kind of the instance or type.
-
-```swift
-var song = Song()
-
-print(swift_metadataKind(of: song)) // MetadataKind.struct
-// OR
-print(swift_metadataKind(of: type(of: song))) // MetadataKind.struct
-// OR
-print(swift_metadataKind(of: Song.self)) // MetadataKind.struct
-```
-
-### swift_properties(of:)
-
-Returns the array of the instance or type properties.
+Returns the metadata of an instance or a type which includes its `type`, `kind`, `size` and a list of accessible `properties`:
 
 ```swift
-var song = Song()
+var song = Song(name: "Blue Suede Shoes", artist: "Elvis Presley")
 
-let properties = swift_properties(of: song)
+let metadata = swift_metadata(of: song)
 // OR
-swift_properties(of: type(of:song))
+swift_metadata(of: type(of: song))
 // OR
-swift_properties(of: Song.self)
+swift_metadata(of: Song.self)
 
-properties.forEach {
-    print($0)
-}
+print(metadata)
 ```
 
 Outputs:
 
 ```
-PropertyMetadata(name: "name", type: Swift.String, isStrong: true, isVar: false, offset: 0)
-PropertyMetadata(name: "artist", type: Swift.String, isStrong: true, isVar: false, offset: 16)
+Metadata(type: Song, kind: .struct, size: 32, properties: [
+  Property(name: 'name', isStrong: true, isVar: false, offset: 0),
+  Property(name: 'artist', isStrong: true, isVar: false, offset: 16)])
 ```
 
 ### swift_value(of:, key:)
 
-Returns the value for the instance's property identified by a given key.
+Returns the value for the instance's property identified by a given name or key path.
 
 ```swift
 var song = Song(name: "Blue Suede Shoes", artist: "Elvis Presley")
@@ -316,7 +317,7 @@ print(name, "-", aritst) // Blue Suede Shoes - Elvis Presley
 
 ### swift_setValue(_:, to:, key:)
 
-Sets a property of an instance specified by a given key to a given value.
+Sets a property of an instance specified by a given name or key path to a given value.
 
 ```swift
 var song = Song(name: "", artist: "")
