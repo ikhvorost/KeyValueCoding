@@ -17,6 +17,7 @@
   - [Class Inheritance](#class-inheritance)
   - [NSObject](#nsobject)
   - [Struct](#struct)
+  - [Protocols](#protocols)
   - [Functions](#functions)
 - [KeyValueCoding Protocol](#keyvaluecoding-protocol)
   - [metadata](#metadata)
@@ -176,6 +177,29 @@ struct Book: KeyValueCoding {
 }
 
 var book = Book()
+
+book["title"] = "The Swift Programming Language"
+book["ISBN"] = 1234567890
+
+print(book) // Book(title: "The Swift Programming Language", ISBN: 1234567890)
+```
+
+### Protocols
+
+You can inherit any protocol from `KeyValueCoding` one and then use instances with the protocol type to access to declared properties:
+
+```swift
+protocol BookProtocol: KeyValueCoding {
+    var title: String { get }
+    var ISBN: Int { get }
+}
+
+struct Book: BookProtocol {
+    let title: String = ""
+    let ISBN: Int = 0
+}
+
+var book: BookProtocol = Book()
 
 book["title"] = "The Swift Programming Language"
 book["ISBN"] = 1234567890
