@@ -61,9 +61,9 @@ fileprivate func withPointer<T>(_ instance: inout T, _ body: (UnsafeMutableRawPo
 }
 
 @discardableResult
-fileprivate func withProperty<T>(_ instance: inout T, path: [String], _ body: (Metadata, UnsafeMutableRawPointer) -> Any?) -> Any? {
+fileprivate func withProperty<T>(_ instance: inout T, keyPath: [String], _ body: (Metadata, UnsafeMutableRawPointer) -> Any?) -> Any? {
     withPointer(&instance) { pointer, metadata in
-        var keys = path
+        var keys = keyPath
         guard let key = keys.popLast(), let property = (metadata.properties.first { $0.name == key }) else {
             return nil
         }
@@ -80,7 +80,7 @@ fileprivate func withProperty<T>(_ instance: inout T, path: [String], _ body: (M
                     property.metadata.set(value: value, pointer: pointer)
                 }
             }
-            return withProperty(&value, path: keys, body)
+            return withProperty(&value, keyPath: keys, body)
         }
         return nil
     }
@@ -107,35 +107,39 @@ public func swift_metadata(of instance: Any) -> Metadata {
     return swift_metadata(of: type)
 }
 
-/// Returns the value for the instance's property identified by a given key or path.
+/// Returns the value for the instance's property identified by a given name or a key path.
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
-///     - key: The name of one of the instance's properties.
-/// - Returns: The value for the property identified by key.
+///     - key: The name of one of the instance's properties or a key path of the form
+///            relationship.property (with one or more relationships):
+///            for example “department.name” or “department.manager.lastName.”
+/// - Returns: The value for the property identified by a name or a key path.
 public func swift_value<T>(of instance: inout T, key: String) -> Any? {
-    let path: [String] = key.components(separatedBy: ".").reversed()
-    return withProperty(&instance, path: path) { metadata, pointer in
+    let keyPath: [String] = key.components(separatedBy: ".").reversed()
+    return withProperty(&instance, keyPath: keyPath) { metadata, pointer in
         metadata.get(from: pointer)
     }
 }
 
-/// Sets a property of an instance specified by a given key to a given value or path.
+/// Sets a property of an instance specified by a given name or a key path to a given value.
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
-///     - value: The value for the property identified by key.
-///     - key: The name of one of the instance's properties.
+///     - value: The value for the property identified by a name or a key path.
+///     - key: The name of one of the instance's properties or a key path of the form
+///            relationship.property (with one or more relationships):
+///            for example “department.name” or “department.manager.lastName.”
 public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {
-    let path: [String] = key.components(separatedBy: ".").reversed()
-    withProperty(&to, path: path) { metadata, pointer in
+    let keyPath: [String] = key.components(separatedBy: ".").reversed()
+    withProperty(&to, keyPath: keyPath) { metadata, pointer in
         metadata.set(value: value as Any, pointer: pointer)
     }
 }
 
 // MARK: - KeyValueCoding
 
-/// Protocol to access to the properties of an instance indirectly by name or key.
+/// Protocol to access to the properties of an instance indirectly by a name or a key path.
 public protocol KeyValueCoding {}
 
 extension KeyValueCoding {
@@ -145,25 +149,29 @@ extension KeyValueCoding {
         swift_metadata(of: self)
     }
     
-    /// Returns a value for a property identified by a given key or path.
+    /// Returns a value for a property identified by a given name or a key path.
     ///
     /// - Parameters:
-    ///     - key: The name of one of the instance's properties.
-    /// - Returns: The value for the property identified by key.
+    ///     - key: The name of one of the instance's properties or a key path of the form
+    ///            relationship.property (with one or more relationships):
+    ///            for example “department.name” or “department.manager.lastName.”
+    /// - Returns: The value for the property identified by a name or a key path.
     public mutating func value(key: String) -> Any? {
         swift_value(of: &self, key: key)
     }
     
-    /// Sets a property specified by a given key or path to a given value.
+    /// Sets a property specified by a given name or a key path to a given value.
     ///
     /// - Parameters:
-    ///     - value: The value for the property identified by key.
-    ///     - key: The name of one of the instance's properties.
+    ///     - value: The value for the property identified by a name or a key path.
+    ///     - key: The name of one of the instance's properties or a key path of the form
+    ///            relationship.property (with one or more relationships):
+    ///            for example “department.name” or “department.manager.lastName.”
     public mutating func setValue(_ value: Any?, key: String) {
         swift_setValue(value, to: &self, key: key)
     }
     
-    /// Gets and sets a value for a property identified by a given key or path.
+    /// Gets and sets a value for a property identified by a given name or a key path.
     public subscript(key: String) -> Any? {
         mutating get {
             value(key: key)

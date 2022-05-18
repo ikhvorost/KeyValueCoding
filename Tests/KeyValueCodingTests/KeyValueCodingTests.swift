@@ -38,43 +38,69 @@ protocol UserProtocol: KeyValueCoding {
     var classInfoOptional: ClassInfo? { get }
     var structInfo: StructInfo { get }
     var structInfoOptional: StructInfo? { get }
+    var observed: Int { get set }
+    var computed: Int { get }
 }
 
 class UserClass: UserProtocol {
     let id = 0
     let name: String? = nil
-    let type: UserType = .none
+    var type: UserType = .none
     let array: [Int] = [Int]()
     let classInfo = ClassInfo(phone: "", email: "")
     var classInfoOptional: ClassInfo? = nil
     let structInfo = StructInfo(phone: "", email: "")
     var structInfoOptional: StructInfo? = nil
+    var observed: Int = 0 {
+        willSet { XCTFail() }
+        didSet { XCTFail() }
+    }
+    var computed: Int {
+        XCTFail();
+        return 0
+    }
 }
 
 class UserClass2: UserClass {
-    let promoCode: Int = 0
+    private let promoCode: Int = 0
 }
 
 class UserClassObjC: NSObject, UserProtocol {
     @objc let id = 0
     @objc let name: String? = nil
-    let type: UserType = .none
+    var type: UserType = .none
     @objc let array: [Int] = [Int]()
     let classInfo = ClassInfo(phone: "", email: "")
     let classInfoOptional: ClassInfo? = nil
     let structInfo = StructInfo(phone: "", email: "")
     var structInfoOptional: StructInfo? = nil
+    var observed: Int = 0 {
+        willSet { XCTFail() }
+        didSet { XCTFail() }
+    }
+    var computed: Int {
+        XCTFail();
+        return 0
+    }
 }
 
 struct UserStruct: UserProtocol {
     let id = 0
     let name: String? = nil
-    let type: UserType = .none
+    var type: UserType = .none
     let array: [Int] = [Int]()
     let classInfo = ClassInfo(phone: "", email: "")
     let classInfoOptional: ClassInfo? = nil
     let structInfo = StructInfo(phone: "", email: "")
     var structInfoOptional: StructInfo? = nil
+    var observed: Int = 0 {
+        willSet { XCTFail() }
+        didSet { XCTFail() }
+    }
+    var computed: Int {
+        XCTFail();
+        return 0
+    }
 }
 
 protocol SongProtocol: KeyValueCoding {
@@ -87,7 +113,7 @@ struct Song: SongProtocol {
 
 final class KeyValueCodingTests: XCTestCase {
     
-    func test_keyValueCoding<T: UserProtocol>(_ user: inout T, kind: Metadata.Kind, propertiesCount: Int = 8) {
+    func test_keyValueCoding<T: UserProtocol>(_ user: inout T, kind: Metadata.Kind, propertiesCount: Int = 9) {
         
         // Metadata
         
@@ -95,6 +121,7 @@ final class KeyValueCodingTests: XCTestCase {
         XCTAssert(swift_metadata(of: T.self).kind == kind)
         XCTAssert(metadata.kind == kind)
         XCTAssert(user.metadata.kind == kind)
+        XCTAssert(metadata.description.hasPrefix("Metadata(type: \(String(describing: metadata.type)), kind: .\(kind), size: \(metadata.size)"))
         
         let properties = metadata.properties
         XCTAssert(properties.count == propertiesCount)
@@ -103,7 +130,7 @@ final class KeyValueCodingTests: XCTestCase {
             XCTAssert(metadata.size == 8)
         }
         else {
-            XCTAssert(metadata.size == 120)
+            XCTAssert(metadata.size == 128)
         }
         
         let property = user.metadata.properties[0]
@@ -112,9 +139,12 @@ final class KeyValueCodingTests: XCTestCase {
         XCTAssert(property.metadata.type == Int.self)
         XCTAssert(property.isStrong == true)
         XCTAssert(property.isVar == false)
+        XCTAssert(property.description == "Property(name: \'id\', isStrong: true, isVar: false, offset: \(property.offset))")
         
         // Nil
         XCTAssertNil(user[""])
+        XCTAssertNil(user["."])
+        XCTAssertNil(user["..."])
         XCTAssertNil(user["undefined"])
         XCTAssertNil(user["name"])
         XCTAssertNil(user["classInfo.undefined"])
@@ -266,6 +296,13 @@ final class KeyValueCodingTests: XCTestCase {
         XCTAssertNil(user["classInfoOptional.email"])
         XCTAssertNil(user["structInfoOptional"])
         XCTAssertNil(user["structInfoOptional.email"])
+        
+        // Observed
+        user["observed"] = 10
+        
+        // Computed
+        user["computed"] = 100
+        XCTAssertNil(user["computed"])
     }
     
     func test_class() {
@@ -282,8 +319,14 @@ final class KeyValueCodingTests: XCTestCase {
     
     func test_class_inheritance() {
         var user = UserClass2()
-        test_keyValueCoding(&user, kind: .class, propertiesCount: 9)
+        test_keyValueCoding(&user, kind: .class, propertiesCount: 10)
         
+        user["id"] = 100
+        user["name"] = "Jack"
+        XCTAssert(user["id"] as? Int == 100)
+        XCTAssert(user["name"] as? String == "Jack")
+        
+        // Private
         user["promoCode"] = 100
         XCTAssert(user["promoCode"] as? Int == 100)
     }

@@ -162,6 +162,20 @@ public struct Metadata {
     }
 }
 
+extension Metadata.Property: CustomStringConvertible {
+    /// A textual representation the `Metadata.Property`.
+    public var description: String {
+        return "Property(name: '\(name)', isStrong: \(isStrong), isVar: \(isVar), offset: \(offset))"
+    }
+}
+
+extension Metadata: CustomStringConvertible {
+    /// A textual representation the `Metadata`.
+    public var description: String {
+        return "Metadata(type: \(type), kind: .\(kind), size: \(size), properties: \(properties))"
+    }
+}
+
 class MetadataCache {
     
     static let shared = MetadataCache()
