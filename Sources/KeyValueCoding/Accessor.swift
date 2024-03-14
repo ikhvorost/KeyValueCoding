@@ -27,27 +27,27 @@
 protocol Accessor {}
 
 extension Accessor {
-    
-    static func get(from pointer: UnsafeRawPointer) -> Any {
-        return pointer.assumingMemoryBound(to: Self.self).pointee
+  
+  static func get(from pointer: UnsafeRawPointer) -> Any {
+    return pointer.assumingMemoryBound(to: Self.self).pointee
+  }
+  
+  static func set(value: Any, pointer: UnsafeMutableRawPointer) {
+    if let value = value as? Self {
+      pointer.assumingMemoryBound(to: self).pointee = value
     }
-
-    static func set(value: Any, pointer: UnsafeMutableRawPointer) {
-        if let value = value as? Self {
-            pointer.assumingMemoryBound(to: self).pointee = value
-        }
-    }
-    
-    static var size: Int {
-        MemoryLayout<Self>.size
-    }
+  }
+  
+  static var size: Int {
+    MemoryLayout<Self>.size
+  }
 }
 
 struct ProtocolTypeContainer {
-    let type: Any.Type
-    let witnessTable = 0
-    
-    var accessor: Accessor.Type {
-        unsafeBitCast(self, to: Accessor.Type.self)
-    }
+  let type: Any.Type
+  let witnessTable = 0
+  
+  var accessor: Accessor.Type {
+    unsafeBitCast(self, to: Accessor.Type.self)
+  }
 }

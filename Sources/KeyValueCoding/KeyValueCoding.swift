@@ -24,66 +24,66 @@
 //
 
 fileprivate func withPointer<T>(_ instance: inout T, _ body: (UnsafeMutableRawPointer, Metadata) -> Any?) -> Any? {
-    withUnsafePointer(to: &instance) {
-        let metadata = swift_metadata(of: T.self)
-        if metadata.kind == .struct {
-            return body(UnsafeMutableRawPointer(mutating: $0), metadata)
+  withUnsafePointer(to: &instance) {
+    let metadata = swift_metadata(of: T.self)
+    if metadata.kind == .struct {
+      return body(UnsafeMutableRawPointer(mutating: $0), metadata)
+    }
+    else if metadata.kind == .class {
+      return $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
+        body($0.pointee, metadata)
+      }
+    }
+    else if metadata.kind == .existential {
+      return $0.withMemoryRebound(to: ExistentialContainer.self, capacity: 1) {
+        let type = $0.pointee.type
+        let metadata = swift_metadata(of: type)
+        if metadata.kind == .class {
+          return $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
+            body($0.pointee, metadata)
+          }
         }
-        else if metadata.kind == .class {
+        else if metadata.kind == .struct {
+          if metadata.size > MemoryLayout<ExistentialContainerBuffer>.size {
             return $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
-                body($0.pointee, metadata)
+              body($0.pointee.advanced(by: ExistentialHeaderSize), metadata)
             }
-        }
-        else if metadata.kind == .existential {
-            return $0.withMemoryRebound(to: ExistentialContainer.self, capacity: 1) {
-                let type = $0.pointee.type
-                let metadata = swift_metadata(of: type)
-                if metadata.kind == .class {
-                    return $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
-                        body($0.pointee, metadata)
-                    }
-                }
-                else if metadata.kind == .struct {
-                    if metadata.size > MemoryLayout<ExistentialContainerBuffer>.size {
-                        return $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
-                            body($0.pointee.advanced(by: ExistentialHeaderSize), metadata)
-                        }
-                    }
-                    else {
-                        return body(UnsafeMutableRawPointer(mutating: $0), metadata)
-                    }
-                }
-                return nil
-            }
+          }
+          else {
+            return body(UnsafeMutableRawPointer(mutating: $0), metadata)
+          }
         }
         return nil
+      }
     }
+    return nil
+  }
 }
 
 @discardableResult
 fileprivate func withProperty<T>(_ instance: inout T, keyPath: [String], _ body: (Metadata, UnsafeMutableRawPointer) -> Any?) -> Any? {
-    withPointer(&instance) { pointer, metadata in
-        var keys = keyPath
-        guard let key = keys.popLast(), let property = (metadata.properties.first { $0.name == key }) else {
-            return nil
-        }
-        
-        let pointer = pointer.advanced(by: property.offset)
-
-        if keys.isEmpty {
-            return body(property.metadata, pointer)
-        }
-        else if var value = property.metadata.get(from: pointer) {
-            defer {
-                let metadata = swift_metadata(of: type(of: value))
-                if metadata.kind == .struct {
-                    property.metadata.set(value: value, pointer: pointer)
-                }
-            }
-            return withProperty(&value, keyPath: keys, body)
-        }
-        return nil
+  withPointer(&instance) { pointer, metadata in
+    var keys = keyPath
+    guard let key = keys.popLast(), let property = (metadata.properties.first { $0.name == key }) else {
+      return nil
     }
+    
+    let pointer = pointer.advanced(by: property.offset)
+    
+    if keys.isEmpty {
+      return body(property.metadata, pointer)
+    }
+    else if var value = property.metadata.get(from: pointer) {
+      defer {
+        let metadata = swift_metadata(of: type(of: value))
+        if metadata.kind == .struct {
+          property.metadata.set(value: value, pointer: pointer)
+        }
+      }
+      return withProperty(&value, keyPath: keys, body)
+    }
+    return nil
+  }
 }
 
 // MARK: -
@@ -94,7 +94,7 @@ fileprivate func withProperty<T>(_ instance: inout T, keyPath: [String], _ body:
 ///     - type: Type of a metatype instance.
 /// - Returns: Metadata of the type.
 public func swift_metadata(of type: Any.Type) -> Metadata {
-    MetadataCache.shared.metadata(of: type)
+  MetadataCache.shared.metadata(of: type)
 }
 
 /// Returns the metadata of the instance.
@@ -103,8 +103,8 @@ public func swift_metadata(of type: Any.Type) -> Metadata {
 ///     - instance: Instance of any type.
 /// - Returns: Metadata of the type.
 public func swift_metadata(of instance: Any) -> Metadata {
-    let type = type(of: instance)
-    return swift_metadata(of: type)
+  let type = type(of: instance)
+  return swift_metadata(of: type)
 }
 
 /// Returns the value for the instance's property identified by a given name or a key path.
@@ -116,10 +116,10 @@ public func swift_metadata(of instance: Any) -> Metadata {
 ///            for example “department.name” or “department.manager.lastName.”
 /// - Returns: The value for the property identified by a name or a key path.
 public func swift_value<T>(of instance: inout T, key: String) -> Any? {
-    let keyPath: [String] = key.components(separatedBy: ".").reversed()
-    return withProperty(&instance, keyPath: keyPath) { metadata, pointer in
-        metadata.get(from: pointer)
-    }
+  let keyPath: [String] = key.components(separatedBy: ".").reversed()
+  return withProperty(&instance, keyPath: keyPath) { metadata, pointer in
+    metadata.get(from: pointer)
+  }
 }
 
 /// Sets a property of an instance specified by a given name or a key path to a given value.
@@ -131,10 +131,10 @@ public func swift_value<T>(of instance: inout T, key: String) -> Any? {
 ///            relationship.property (with one or more relationships):
 ///            for example “department.name” or “department.manager.lastName.”
 public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {
-    let keyPath: [String] = key.components(separatedBy: ".").reversed()
-    withProperty(&to, keyPath: keyPath) { metadata, pointer in
-        metadata.set(value: value as Any, pointer: pointer)
-    }
+  let keyPath: [String] = key.components(separatedBy: ".").reversed()
+  withProperty(&to, keyPath: keyPath) { metadata, pointer in
+    metadata.set(value: value as Any, pointer: pointer)
+  }
 }
 
 // MARK: - KeyValueCoding
@@ -143,41 +143,41 @@ public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {
 public protocol KeyValueCoding {}
 
 extension KeyValueCoding {
-    
-    /// Returns the metadata of the instance type.
-    public var metadata: Metadata {
-        swift_metadata(of: self)
+  
+  /// Returns the metadata of the instance type.
+  public var metadata: Metadata {
+    swift_metadata(of: self)
+  }
+  
+  /// Returns a value for a property identified by a given name or a key path.
+  ///
+  /// - Parameters:
+  ///     - key: The name of one of the instance's properties or a key path of the form
+  ///            relationship.property (with one or more relationships):
+  ///            for example “department.name” or “department.manager.lastName.”
+  /// - Returns: The value for the property identified by a name or a key path.
+  public mutating func value(key: String) -> Any? {
+    swift_value(of: &self, key: key)
+  }
+  
+  /// Sets a property specified by a given name or a key path to a given value.
+  ///
+  /// - Parameters:
+  ///     - value: The value for the property identified by a name or a key path.
+  ///     - key: The name of one of the instance's properties or a key path of the form
+  ///            relationship.property (with one or more relationships):
+  ///            for example “department.name” or “department.manager.lastName.”
+  public mutating func setValue(_ value: Any?, key: String) {
+    swift_setValue(value, to: &self, key: key)
+  }
+  
+  /// Gets and sets a value for a property identified by a given name or a key path.
+  public subscript(key: String) -> Any? {
+    mutating get {
+      value(key: key)
     }
-    
-    /// Returns a value for a property identified by a given name or a key path.
-    ///
-    /// - Parameters:
-    ///     - key: The name of one of the instance's properties or a key path of the form
-    ///            relationship.property (with one or more relationships):
-    ///            for example “department.name” or “department.manager.lastName.”
-    /// - Returns: The value for the property identified by a name or a key path.
-    public mutating func value(key: String) -> Any? {
-        swift_value(of: &self, key: key)
+    set {
+      setValue(newValue, key: key)
     }
-    
-    /// Sets a property specified by a given name or a key path to a given value.
-    ///
-    /// - Parameters:
-    ///     - value: The value for the property identified by a name or a key path.
-    ///     - key: The name of one of the instance's properties or a key path of the form
-    ///            relationship.property (with one or more relationships):
-    ///            for example “department.name” or “department.manager.lastName.”
-    public mutating func setValue(_ value: Any?, key: String) {
-        swift_setValue(value, to: &self, key: key)
-    }
-    
-    /// Gets and sets a value for a property identified by a given name or a key path.
-    public subscript(key: String) -> Any? {
-        mutating get {
-            value(key: key)
-        }
-        set {
-            setValue(newValue, key: key)
-        }
-    }
+  }
 }

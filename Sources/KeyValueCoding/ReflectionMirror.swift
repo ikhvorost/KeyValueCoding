@@ -27,10 +27,10 @@
 typealias NameFreeFunc = @convention(c) (UnsafePointer<CChar>?) -> Void
 
 struct _FieldReflectionMetadata {
-    let name: UnsafePointer<CChar>? = nil
-    let freeFunc: NameFreeFunc? = nil
-    let isStrong: Bool = false
-    let isVar: Bool = false
+  let name: UnsafePointer<CChar>? = nil
+  let freeFunc: NameFreeFunc? = nil
+  let isStrong: Bool = false
+  let isVar: Bool = false
 }
 
 @_silgen_name("swift_reflectionMirror_recursiveCount")
@@ -38,9 +38,9 @@ func swift_reflectionMirror_recursiveCount(_: Any.Type) -> Int
 
 @_silgen_name("swift_reflectionMirror_recursiveChildMetadata")
 func swift_reflectionMirror_recursiveChildMetadata(
-    _: Any.Type
-    , index: Int
-    , fieldMetadata: UnsafeMutablePointer<_FieldReflectionMetadata>
+  _: Any.Type
+  , index: Int
+  , fieldMetadata: UnsafeMutablePointer<_FieldReflectionMetadata>
 ) -> Any.Type
 
 @_silgen_name("swift_reflectionMirror_recursiveChildOffset")
