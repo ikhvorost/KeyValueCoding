@@ -1,5 +1,5 @@
 //
-//  API.swift
+//  SwiftAPI.swift
 //
 //  Created by Iurii Khvorost <iurii.khvorost@gmail.com> on 2024/03/19.
 //  Copyright © 2024 Iurii Khvorost. All rights reserved.
