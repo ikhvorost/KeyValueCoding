@@ -2,6 +2,247 @@ import XCTest
 /*@testable*/ import KeyValueCoding
 
 
+enum TestError: Error, Equatable {}
+
+extension StaticString : Equatable {
+  public static func == (lhs: StaticString, rhs: StaticString) -> Bool {
+    "\(lhs)" == "\(rhs)"
+  }
+}
+
+struct Options: OptionSet {
+  let rawValue: Int
+  
+  static let first = Options(rawValue: 1 << 0)
+  static let second = Options(rawValue: 1 << 1)
+}
+
+enum Enum: Equatable {
+  case a
+  case b(Int)
+}
+
+protocol Props {
+  var int: Int { get }
+  var float: Float { get }
+  var double: Double { get }
+  var char: Character { get }
+  var string: String { get }
+  var staticString: StaticString { get }
+  var bool: Bool { get }
+  
+  var options: Options { get }
+  var `enum`: Enum { get }
+  var result: Result<Int, TestError> { get }
+  var range: Range<Int> { get }
+  var closedRange: ClosedRange<Int> { get }
+  var tuple: (Int, String) { get }
+  
+  var arrayInt: [Int] { get }
+  var arrayAny: [Any] { get }
+  var dictInt: [String : Int] { get }
+  var dictAny: [String : Any] { get }
+  var setInt: Set<Int> { get }
+  
+  var optional: Int? { get }
+  
+  var date: Date { get }
+  
+  var `lazy`: Int { mutating get }
+  var observed: Int { get }
+  var computed: Int { get }
+}
+
+struct Struct: Props, KeyValueCoding {
+  let int: Int = 1
+  let float: Float = 1.0
+  let double: Double = 1.0
+  let char: Character = "a"
+  let string: String = "string"
+  let staticString: StaticString = "static"
+  let bool: Bool = true
+  
+  let options: Options = .first
+  let `enum`: Enum = .a
+  let result: Result<Int, TestError> = .success(200)
+  let range: Range = 0..<3
+  let closedRange: ClosedRange = 0...3
+  let tuple: (Int, String) = (1, "a")
+  
+  let arrayInt: [Int] = [1, 2]
+  let arrayAny: [Any] = [1, "2"]
+  let dictInt: [String : Int] = ["a" : 1, "b" : 2]
+  let dictAny: [String : Any] = ["a" : 1, "b" : "2"]
+  let setInt: Set = [1, 2]
+  
+  let optional: Int? = 1
+  
+  let date: Date = Date(timeIntervalSince1970: 1000)
+  
+  lazy var `lazy`: Int = { XCTFail(); return 1 }()
+  var observed: Int = 1 {
+    willSet { XCTFail() }
+    didSet { XCTFail() }
+  }
+  var computed: Int { XCTFail(); return 1 }
+}
+
+class Class: Props, KeyValueCoding {
+  let int: Int = 1
+  let float: Float = 1.0
+  let double: Double = 1.0
+  let char: Character = "a"
+  let string: String = "string"
+  let staticString: StaticString = "static"
+  let bool: Bool = true
+  
+  let options: Options = .first
+  let `enum`: Enum = .a
+  let result: Result<Int, TestError> = .success(200)
+  let range: Range = 0..<3
+  let closedRange: ClosedRange = 0...3
+  let tuple: (Int, String) = (1, "a")
+  
+  let arrayInt: [Int] = [1, 2]
+  let arrayAny: [Any] = [1, "2"]
+  let dictInt: [String : Int] = ["a" : 1, "b" : 2]
+  let dictAny: [String : Any] = ["a" : 1, "b" : "2"]
+  let setInt: Set = [1, 2]
+  
+  let optional: Int? = 1
+  
+  let date: Date = Date(timeIntervalSince1970: 1000)
+  
+  lazy var `lazy`: Int = { XCTFail(); return 1 }()
+  var observed: Int = 1 {
+    willSet { XCTFail() }
+    didSet { XCTFail() }
+  }
+  var computed: Int { XCTFail(); return 1 }
+}
+
+func key(keyPath: AnyKeyPath) -> String {
+  let key = "\(keyPath)"
+  var index = key.firstIndex(of: ".")!
+  index = key.index(index, offsetBy: 1)
+  return String(key[index..<key.endIndex])
+}
+
+final class _KeyValueCodingTests: XCTestCase {
+  
+  struct Prop {
+    let keyPath: AnyKeyPath
+    let value: Any?
+  }
+  
+  func propsEqual<T: KeyValueCoding>(object: inout T, props: [Prop]) {
+    props.forEach { prop in
+      let key = key(keyPath: prop.keyPath)
+      
+      XCTAssert(object[key] == prop.value, key)
+      //XCTAssert(object[prop.key] as? U == prop.value)
+      
+      XCTAssert(object.value(key: key) == prop.value, key)
+      //XCTAssert(object.value(key: prop.key) as? U == prop.value)
+      
+      XCTAssert(object[prop.keyPath] == prop.value, key)
+      //XCTAssert(object[prop.keyPath] as? U == prop.value)
+      
+      XCTAssert(object.value(keyPath: prop.keyPath) == prop.value, key)
+      //XCTAssert(object.value(keyPath: prop.keyPath) as? U == prop.value)
+      
+      XCTAssert(swift_value(of: &object, key: key) == prop.value, key)
+      //XCTAssert(swift_value(of: &object, key: key) as? U == prop.value)
+      
+      XCTAssert(swift_value(of: &object, keyPath: prop.keyPath) == prop.value, key)
+      //XCTAssert(swift_value(of: &object, keyPath: KeyPath) as? U == prop.value)
+    }
+  }
+  
+  func propsSet<T: KeyValueCoding>(object: inout T, props: [Prop]) {
+    props.forEach { prop in
+      let key = key(keyPath: prop.keyPath)
+      
+      object[key] = prop.value
+      object.setValue(prop.value, key: key)
+      
+      object[prop.keyPath] = prop.value
+      object.setValue(prop.value, keyPath: prop.keyPath)
+      
+      swift_setValue(prop.value, to: &object, key: key)
+      swift_setValue(prop.value, to: &object, keyPath: prop.keyPath)
+    }
+  }
+  
+  let props = [
+    Prop(keyPath: \Props.int, value: 1),
+    Prop(keyPath: \Props.float, value: Float(1.0)),
+    Prop(keyPath: \Props.double, value: 1.0),
+    Prop(keyPath: \Props.char, value: Character("a")),
+    Prop(keyPath: \Props.string, value: "string"),
+    Prop(keyPath: \Props.staticString, value: StaticString("static")),
+    Prop(keyPath: \Props.bool, value: true),
+    Prop(keyPath: \Props.options, value: Options.first),
+    Prop(keyPath: \Props.enum, value: Enum.a),
+    Prop(keyPath: \Props.result, value: Result<Int, TestError>.success(200)),
+    Prop(keyPath: \Props.range, value: 0..<3),
+    Prop(keyPath: \Props.closedRange, value: 0...3),
+    Prop(keyPath: \Props.tuple, value: (1, "a")),
+    Prop(keyPath: \Props.arrayInt, value: [1, 2]),
+    Prop(keyPath: \Props.arrayAny, value: [1, "2"]),
+    Prop(keyPath: \Props.dictInt, value: ["a" : 1, "b" : 2]),
+    Prop(keyPath: \Props.dictAny, value: ["a" : 1, "b" : "2"]),
+    Prop(keyPath: \Props.setInt, value: Set([1, 2])),
+    Prop(keyPath: \Props.optional, value: 1),
+    Prop(keyPath: \Props.optional, value: Optional<Int>.some(1)),
+    Prop(keyPath: \Props.date, value: Date(timeIntervalSince1970: 1000)),
+    Prop(keyPath: \Class.lazy, value: nil),
+    Prop(keyPath: \Props.observed, value: 1),
+    Prop(keyPath: \Props.computed, value: nil),
+  ]
+  
+  func test_struct() {
+    var object = Struct()
+    propsEqual(object: &object, props: props)
+  }
+  
+  func test_class() {
+    var object = Class()
+    propsEqual(object: &object, props: props)
+  }
+  
+  func test_struct_set_wrong() {
+    var object = Struct()
+    propsSet(object: &object, props: [
+      Prop(keyPath: \Props.int, value: ""),
+      Prop(keyPath: \Props.float, value: ""),
+      Prop(keyPath: \Props.double, value: ""),
+      Prop(keyPath: \Props.char, value: 1),
+      Prop(keyPath: \Props.string, value: 1),
+      Prop(keyPath: \Props.staticString, value: 1),
+      Prop(keyPath: \Props.bool, value: ""),
+      Prop(keyPath: \Props.options, value: ""),
+      Prop(keyPath: \Props.enum, value: ""),
+      Prop(keyPath: \Props.result, value: ""),
+      Prop(keyPath: \Props.range, value: ""),
+      Prop(keyPath: \Props.closedRange, value: ""),
+      //Prop(keyPath: \Props.tuple, value: (1, "text")),
+      Prop(keyPath: \Props.arrayInt, value: ""),
+      Prop(keyPath: \Props.arrayAny, value: ""),
+      Prop(keyPath: \Props.dictInt, value: ""),
+      Prop(keyPath: \Props.dictAny, value: ""),
+      Prop(keyPath: \Props.setInt, value: ""),
+      Prop(keyPath: \Props.optional, value: ""),
+      Prop(keyPath: \Props.date, value: ""),
+      //Prop(keyPath: \Struct.lazy, value: nil),
+      Prop(keyPath: \Props.observed, value: ""),
+      Prop(keyPath: \Props.computed, value: ""),
+    ])
+    propsEqual(object: &object, props: props)
+  }
+}
+
+
 enum UserType {
   case none
   case guest
@@ -217,32 +458,32 @@ final class KeyValueCodingTests: XCTestCase {
     XCTAssertNil(swift_value(of: &user, key: "undefined"))
     XCTAssert(swift_value(of: &user, key: "id") as? Int == 3)
     XCTAssert(swift_value(of: &user, key: "name") as? String == "Alice")
-    XCTAssert(swift_value(of: &user, key: "type") as? UserType == .user)
+    XCTAssert(swift_value(of: &user, key: "type") as? UserType == UserType.user)
     XCTAssert(swift_value(of: &user, key: "array") as? [Int] == array)
-    XCTAssert(swift_value(of: &user, key: "classInfo") as? ClassInfo == classInfo)
+    XCTAssert(swift_value(of: &user, key: "classInfo") as? ClassInfo  == classInfo)
     XCTAssert(swift_value(of: &user, key: "classInfoOptional") as? ClassInfo == classInfo)
     XCTAssert(swift_value(of: &user, key: "structInfo") as? StructInfo == structInfo)
     XCTAssert(swift_value(of: &user, key: "structInfoOptional") as? StructInfo == structInfo)
     
     XCTAssertNil(user.value(key: "undefined"))
-    XCTAssert(user.value(key: "id") as? Int == 3)
-    XCTAssert(user.value(key: "name") as? String == "Alice")
-    XCTAssert(user.value(key: "type") as? UserType == .user)
-    XCTAssert(user.value(key: "array") as? [Int] == array)
-    XCTAssert(user.value(key: "classInfo") as? ClassInfo == classInfo)
-    XCTAssert(user.value(key: "classInfoOptional") as? ClassInfo == classInfo)
-    XCTAssert(user.value(key: "structInfo") as? StructInfo == structInfo)
-    XCTAssert(user.value(key: "structInfoOptional") as? StructInfo == structInfo)
+    XCTAssert(user.value(key: "id") == 3)
+    XCTAssert(user.value(key: "name") == "Alice")
+    XCTAssert(user.value(key: "type") == UserType.user)
+    XCTAssert(user.value(key: "array") == array)
+    XCTAssert(user.value(key: "classInfo") == classInfo)
+    XCTAssert(user.value(key: "classInfoOptional") == classInfo)
+    XCTAssert(user.value(key: "structInfo") == structInfo)
+    XCTAssert(user.value(key: "structInfoOptional") == structInfo)
     
     XCTAssertNil(user["undefined"])
-    XCTAssert(user["id"] as? Int == 3)
-    XCTAssert(user["name"] as? String == "Alice")
-    XCTAssert(user["type"] as? UserType == .user)
-    XCTAssert(user["array"] as? [Int] == array)
-    XCTAssert(user["classInfo"] as? ClassInfo == classInfo)
-    XCTAssert(user["classInfoOptional"] as? ClassInfo == classInfo)
-    XCTAssert(user["structInfo"] as? StructInfo == structInfo)
-    XCTAssert(user["structInfoOptional"] as? StructInfo == structInfo)
+    XCTAssert(user["id"] == 3)
+    XCTAssert(user["name"] == "Alice")
+    XCTAssert(user["type"] == UserType.user)
+    XCTAssert(user["array"] == array)
+    XCTAssert(user["classInfo"] == classInfo)
+    XCTAssert(user["classInfoOptional"] == classInfo)
+    XCTAssert(user["structInfo"] == structInfo)
+    XCTAssert(user["structInfoOptional"] == structInfo)
     
     // Set wrong type
     
@@ -258,14 +499,14 @@ final class KeyValueCodingTests: XCTestCase {
     user["structInfo.phone"] = 10
     user["structInfoOptioanal"] = "123"
     user["structInfoOptioanal.phone"] = 10
-    XCTAssert(user["id"] as? Int == 3)
-    XCTAssert(user["name"] as? String == "Alice")
-    XCTAssert(user["type"] as? UserType == .user)
-    XCTAssert(user["array"] as? [Int] == array)
-    XCTAssert(user["classInfo"] as? ClassInfo == classInfo)
-    XCTAssert(user["classInfoOptional"] as? ClassInfo == classInfo)
-    XCTAssert(user["structInfo"] as? StructInfo == structInfo)
-    XCTAssert(user["structInfoOptional"] as? StructInfo == structInfo)
+    XCTAssert(user["id"] == 3)
+    XCTAssert(user["name"] == "Alice")
+    XCTAssert(user["type"] == UserType.user)
+    XCTAssert(user["array"] == array)
+    XCTAssert(user["classInfo"] == classInfo)
+    XCTAssert(user["classInfoOptional"] == classInfo)
+    XCTAssert(user["structInfo"] == structInfo)
+    XCTAssert(user["structInfoOptional"] == structInfo)
     
     
     // Key path
@@ -274,20 +515,20 @@ final class KeyValueCodingTests: XCTestCase {
     user["classInfoOptional"] = classInfo
     user["structInfo"] = structInfo
     user["structInfoOptional"] = structInfo
-    XCTAssert(user["classInfo.email"] as? String == classInfo.email)
-    XCTAssert(user["classInfoOptional.email"] as? String == classInfo.email)
-    XCTAssert(user["structInfo.email"] as? String == structInfo.email)
-    XCTAssert(user["structInfoOptional.email"] as? String == structInfo.email)
+    XCTAssert(user["classInfo.email"] == classInfo.email)
+    XCTAssert(user["classInfoOptional.email"] == classInfo.email)
+    XCTAssert(user["structInfo.email"] == structInfo.email)
+    XCTAssert(user["structInfoOptional.email"] == structInfo.email)
     
     let email = "my@my.com"
     user["classInfo.email"] = email
     user["classInfoOptional.email"] = email
     user["structInfo.email"] = email
     user["structInfoOptional.email"] = email
-    XCTAssert(user["classInfo.email"] as? String == email)
-    XCTAssert(user["classInfoOptional.email"] as? String == email)
-    XCTAssert(user["structInfo.email"] as? String == email)
-    XCTAssert(user["structInfoOptional.email"] as? String == email)
+    XCTAssert(user["classInfo.email"] == email)
+    XCTAssert(user["classInfoOptional.email"] == email)
+    XCTAssert(user["structInfo.email"] == email)
+    XCTAssert(user["structInfoOptional.email"] == email)
     
     user["classInfoOptional"] = nil
     user["structInfoOptional"] = nil
@@ -322,12 +563,12 @@ final class KeyValueCodingTests: XCTestCase {
     
     user["id"] = 100
     user["name"] = "Jack"
-    XCTAssert(user["id"] as? Int == 100)
-    XCTAssert(user["name"] as? String == "Jack")
+    XCTAssert(user["id"] == 100)
+    XCTAssert(user["name"] == "Jack")
     
     // Private
     user["promoCode"] = 100
-    XCTAssert(user["promoCode"] as? Int == 100)
+    XCTAssert(user["promoCode"] == 100)
   }
   
   func test_class_objc() {
@@ -356,8 +597,8 @@ final class KeyValueCodingTests: XCTestCase {
     test_keyValueCoding(&optional!, kind: .class)
     
     optional?["id"] = 123
-    XCTAssert(optional?["id"] as? Int == 123)
-    XCTAssert(optional?.value(key: "id") as? Int == 123)
+    XCTAssert(optional?["id"] == 123)
+    XCTAssert(optional?.value(key: "id") == 123)
     XCTAssert(swift_value(of: &optional!, key: "id") as? Int == 123)
     
     XCTAssertNil(swift_value(of: &optional, key: "id"))
