@@ -88,10 +88,10 @@ fileprivate func withProperty<T>(_ instance: inout T, keyPath: [String], _ body:
 }
 
 fileprivate func key(keyPath: AnyKeyPath) -> String {
-  let key = "\(keyPath)"
-  var index = key.firstIndex(of: ".")!
-  index = key.index(index, offsetBy: 1)
-  return String(key[index..<key.endIndex])
+  var key = "\(keyPath)"
+  let index = key.firstIndex(of: ".")!
+  key = String(key[key.index(index, offsetBy: 1)..<key.endIndex])
+  return key.replacingOccurrences(of: #"[\?\!]"#, with: "", options: [.regularExpression])
 }
 
 /// Returns the metadata of the type.
