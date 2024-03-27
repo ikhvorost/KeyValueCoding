@@ -96,6 +96,8 @@ public struct Metadata {
     /// Is variable property.
     public let isVar: Bool
     
+    public let isLazy: Bool
+    
     /// Offset of the property.
     public let offset: Int
     
@@ -130,9 +132,20 @@ public struct Metadata {
       
       let offset = swift_reflectionMirror_recursiveChildOffset(type, index: $0)
       
-      return Property(name: String(cString: fieldMetadata.name!),
+      assert(fieldMetadata.name != nil)
+      var name = String(cString: fieldMetadata.name!)
+      
+      var isLazy = false
+      let lazyPrefix = "$__lazy_storage_$_"
+      if name.hasPrefix(lazyPrefix) {
+        name = name.replacingOccurrences(of: lazyPrefix, with: "")
+        isLazy = true
+      }
+      
+      return Property(name: name,
                       isStrong: fieldMetadata.isStrong,
                       isVar: fieldMetadata.isVar,
+                      isLazy: isLazy,
                       offset: offset,
                       metadata: swift_metadata(of: propertyType))
     }
