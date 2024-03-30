@@ -13,8 +13,8 @@ extension StaticString : Equatable {
 struct Options: OptionSet {
   let rawValue: Int
   
-  static let first = Options(rawValue: 1 << 0)
-  static let second = Options(rawValue: 1 << 1)
+  static let a = Options(rawValue: 1 << 0)
+  static let b = Options(rawValue: 1 << 1)
 }
 
 enum Enum: Equatable {
@@ -22,7 +22,7 @@ enum Enum: Equatable {
   case b(Int)
 }
 
-protocol Props {
+protocol Props: KeyValueCoding {
   var int: Int { get }
   var float: Float { get }
   var double: Double { get }
@@ -47,13 +47,11 @@ protocol Props {
   var optional: Int? { get }
   
   var date: Date { get }
-  
-  var `lazy`: Int { mutating get }
+  var lazyInt: Int { mutating get }
   var observed: Int { get }
-  var computed: Int { get }
 }
 
-struct Struct: Props, KeyValueCoding {
+struct Struct: Props {
   let int: Int = 1
   let float: Float = 1.0
   let double: Double = 1.0
@@ -62,7 +60,7 @@ struct Struct: Props, KeyValueCoding {
   let staticString: StaticString = "static"
   let bool: Bool = true
   
-  let options: Options = .first
+  let options: Options = .a
   let `enum`: Enum = .a
   let result: Result<Int, TestError> = .success(200)
   let range: Range = 0..<3
@@ -79,15 +77,14 @@ struct Struct: Props, KeyValueCoding {
   
   let date: Date = Date(timeIntervalSince1970: 1000)
   
-  lazy var `lazy`: Int = { XCTFail(); return 1 }()
+  lazy var lazyInt: Int = { XCTFail(); return 1 }()
   var observed: Int = 1 {
     willSet { XCTFail() }
     didSet { XCTFail() }
   }
-  var computed: Int { XCTFail(); return 1 }
 }
 
-class Class: Props, KeyValueCoding {
+class Class: Props {
   let int: Int = 1
   let float: Float = 1.0
   let double: Double = 1.0
@@ -96,7 +93,7 @@ class Class: Props, KeyValueCoding {
   let staticString: StaticString = "static"
   let bool: Bool = true
   
-  let options: Options = .first
+  let options: Options = .a
   let `enum`: Enum = .a
   let result: Result<Int, TestError> = .success(200)
   let range: Range = 0..<3
@@ -113,19 +110,18 @@ class Class: Props, KeyValueCoding {
   
   let date: Date = Date(timeIntervalSince1970: 1000)
   
-  lazy var `lazy`: Int = { XCTFail(); return 1 }()
+  lazy var lazyInt: Int = { XCTFail(); return 1 }()
   var observed: Int = 1 {
     willSet { XCTFail() }
     didSet { XCTFail() }
   }
-  var computed: Int { XCTFail(); return 1 }
 }
 
-func key(keyPath: AnyKeyPath) -> String {
-  let key = "\(keyPath)"
-  var index = key.firstIndex(of: ".")!
-  index = key.index(index, offsetBy: 1)
-  return String(key[index..<key.endIndex])
+fileprivate func key(keyPath: AnyKeyPath) -> String {
+  var key = "\(keyPath)"
+  let index = key.firstIndex(of: ".")!
+  key = String(key[key.index(index, offsetBy: 1)..<key.endIndex])
+  return key.replacingOccurrences(of: #"[\?\!]"#, with: "", options: [.regularExpression])
 }
 
 final class _KeyValueCodingTests: XCTestCase {
@@ -135,42 +131,26 @@ final class _KeyValueCodingTests: XCTestCase {
     let value: Any?
   }
   
-  func propsEqual<T: KeyValueCoding>(object: inout T, props: [Prop]) {
+  func propsEqual(object: inout any KeyValueCoding, props: [Prop]) {
     props.forEach { prop in
       let key = key(keyPath: prop.keyPath)
       
       XCTAssert(object[key] == prop.value, key)
-      //XCTAssert(object[prop.key] as? U == prop.value)
-      
-      XCTAssert(object.value(key: key) == prop.value, key)
-      //XCTAssert(object.value(key: prop.key) as? U == prop.value)
-      
       XCTAssert(object[prop.keyPath] == prop.value, key)
-      //XCTAssert(object[prop.keyPath] as? U == prop.value)
-      
-      XCTAssert(object.value(keyPath: prop.keyPath) == prop.value, key)
-      //XCTAssert(object.value(keyPath: prop.keyPath) as? U == prop.value)
-      
-      XCTAssert(swift_value(of: &object, key: key) == prop.value, key)
-      //XCTAssert(swift_value(of: &object, key: key) as? U == prop.value)
-      
-      XCTAssert(swift_value(of: &object, keyPath: prop.keyPath) == prop.value, key)
-      //XCTAssert(swift_value(of: &object, keyPath: KeyPath) as? U == prop.value)
     }
   }
   
-  func propsSet<T: KeyValueCoding>(object: inout T, props: [Prop]) {
+  func propsSet(object: inout any KeyValueCoding, props: [Prop]) {
     props.forEach { prop in
       let key = key(keyPath: prop.keyPath)
       
       object[key] = prop.value
-      object.setValue(prop.value, key: key)
+      //object.setValue(prop.value, key: key)
+      //swift_setValue(prop.value, to: &object, key: key)
       
       object[prop.keyPath] = prop.value
-      object.setValue(prop.value, keyPath: prop.keyPath)
-      
-      swift_setValue(prop.value, to: &object, key: key)
-      swift_setValue(prop.value, to: &object, keyPath: prop.keyPath)
+      //object.setValue(prop.value, keyPath: prop.keyPath)
+      //swift_setValue(prop.value, to: &object, keyPath: prop.keyPath)
     }
   }
   
@@ -182,7 +162,7 @@ final class _KeyValueCodingTests: XCTestCase {
     Prop(keyPath: \Props.string, value: "string"),
     Prop(keyPath: \Props.staticString, value: StaticString("static")),
     Prop(keyPath: \Props.bool, value: true),
-    Prop(keyPath: \Props.options, value: Options.first),
+    Prop(keyPath: \Props.options, value: Options.a),
     Prop(keyPath: \Props.enum, value: Enum.a),
     Prop(keyPath: \Props.result, value: Result<Int, TestError>.success(200)),
     Prop(keyPath: \Props.range, value: 0..<3),
@@ -196,24 +176,138 @@ final class _KeyValueCodingTests: XCTestCase {
     Prop(keyPath: \Props.optional, value: 1),
     Prop(keyPath: \Props.optional, value: Optional<Int>.some(1)),
     Prop(keyPath: \Props.date, value: Date(timeIntervalSince1970: 1000)),
-    Prop(keyPath: \Class.lazy, value: nil),
+    Prop(keyPath: \Class.lazyInt, value: nil),
     Prop(keyPath: \Props.observed, value: 1),
-    Prop(keyPath: \Props.computed, value: nil),
   ]
   
+  /*
+  class A {
+    let i: Int
+    
+    init(i: Int) {
+      self.i = i
+    }
+  }
+  
+  func test_weak() {
+    struct B: KeyValueCoding {
+      weak var a: A?
+      //var a: A?
+    }
+    
+    var b = B()
+    let a = A(i: 20)
+    
+    //print(b[\B.a])
+    b.a = a
+    print(b[\B.a])
+    
+    //    b["a"] = a
+    //    print(b.a?.i)
+  }
+  
+  func test_unowned() {
+    struct B: KeyValueCoding {
+      unowned var a: A?
+    }
+    
+    var b = B()
+    let a = A(i: 10)
+    
+    b.a = a
+    print(b["a.i"])
+    
+//    b["a"] = a
+//    print(b.a?.i)
+  }
+  
+  
+  @propertyWrapper 
+  struct Wrapper {
+    var value: Int = 0
+    
+    var wrappedValue: Int {
+      get { value }
+      set { value = newValue * 10 }
+    }
+    
+    init(wrappedValue defaultValue: Int) {
+      self.value = wrappedValue
+    }
+  }
+  
+  func test_property_wrapper() {
+    struct B: KeyValueCoding {
+      @Wrapper
+      var i: Int = 0
+    }
+    
+    var b = B()
+    
+    //let props = b.metadata.properties
+    let props = swift_metadata(of: Wrapper.self)
+    
+    //b.i = 10
+    b["_i"] = 10
+    //b.i = 11
+    
+    //print(b["_i"])
+    print(b.i)
+  }
+  */
+  
+  func test_struct_metadata() {
+    let object = Struct()
+    
+    XCTAssert(object.metadata.kind == .struct)
+    XCTAssert(object.metadata.type == Struct.self)
+    XCTAssert(object.metadata.size == 264)
+    XCTAssert(object.metadata.properties.count == 22)
+    
+    let props: [(name: String, isStrong: Bool, isVar: Bool, type: Any.Type)] = [
+      ("int", true, false, Int.self),
+      ("float", true, false, Float.self),
+      ("double", true, false, Double.self),
+      ("char", true, false, Character.self),
+      ("string", true, false, String.self),
+      ("staticString", true, false, StaticString.self),
+      ("bool", true, false, Bool.self),
+      ("options", true, false, Options.self),
+      ("enum", true, false, Enum.self),
+      ("result", true, false, Result<Int, TestError>.self),
+      ("range", true, false, Range<Int>.self),
+      ("closedRange", true, false, ClosedRange<Int>.self),
+      ("tuple", true, false, (Int, String).self),
+      ("arrayInt", true, false, [Int].self),
+      ("arrayAny", true, false, [Any].self),
+      ("dictInt", true, false, [String : Int].self),
+      ("dictAny", true, false, [String : Any].self),
+      ("setInt", true, false, Set<Int>.self),
+      ("optional", true, false, Optional<Int>.self),
+      ("date", true, false, Date.self),
+      ("lazyInt", true, true, Optional<Int>.self),
+      ("observed", true, true, Int.self),
+    ]
+    
+    zip(object.metadata.properties, props).forEach { (prop, item) in
+      let (name, isStrong, isVar, type) = item
+      
+      XCTAssert(prop.name == name, name)
+      XCTAssert(prop.isStrong == isStrong, name)
+      XCTAssert(prop.isVar == isVar, name)
+      XCTAssert(prop.metadata.type == type, name)
+    }
+  }
+  
   func test_struct() {
-    var object = Struct()
+    var object: any KeyValueCoding = Struct()
     propsEqual(object: &object, props: props)
   }
   
-  func test_class() {
-    var object = Class()
-    propsEqual(object: &object, props: props)
-  }
-  
-  func test_struct_set_wrong() {
-    var object = Struct()
-    propsSet(object: &object, props: [
+  func test_struct_set_wrong_values() {
+    var object: any KeyValueCoding = Struct()
+    
+    let props2: [Prop] = [
       Prop(keyPath: \Props.int, value: ""),
       Prop(keyPath: \Props.float, value: ""),
       Prop(keyPath: \Props.double, value: ""),
@@ -226,7 +320,7 @@ final class _KeyValueCodingTests: XCTestCase {
       Prop(keyPath: \Props.result, value: ""),
       Prop(keyPath: \Props.range, value: ""),
       Prop(keyPath: \Props.closedRange, value: ""),
-      //Prop(keyPath: \Props.tuple, value: (1, "text")),
+      Prop(keyPath: \Props.tuple, value: ""),
       Prop(keyPath: \Props.arrayInt, value: ""),
       Prop(keyPath: \Props.arrayAny, value: ""),
       Prop(keyPath: \Props.dictInt, value: ""),
@@ -234,11 +328,179 @@ final class _KeyValueCodingTests: XCTestCase {
       Prop(keyPath: \Props.setInt, value: ""),
       Prop(keyPath: \Props.optional, value: ""),
       Prop(keyPath: \Props.date, value: ""),
-      //Prop(keyPath: \Struct.lazy, value: nil),
+      Prop(keyPath: \Class.lazyInt, value: ""),
       Prop(keyPath: \Props.observed, value: ""),
-      Prop(keyPath: \Props.computed, value: ""),
-    ])
+    ]
+    propsSet(object: &object, props: props2)
     propsEqual(object: &object, props: props)
+  }
+  
+  func test_struct_set_values() {
+    var object: any KeyValueCoding = Struct()
+    
+    let props: [Prop] = [
+      Prop(keyPath: \Props.int, value: 2),
+      Prop(keyPath: \Props.float, value: Float(2.0)),
+      Prop(keyPath: \Props.double, value: 2.0),
+      Prop(keyPath: \Props.char, value: Character("b")),
+      Prop(keyPath: \Props.string, value: "b"),
+      Prop(keyPath: \Props.staticString, value: StaticString("b")),
+      Prop(keyPath: \Props.bool, value: false),
+      Prop(keyPath: \Props.options, value: Options.b),
+      Prop(keyPath: \Props.enum, value: Enum.b(10)),
+      Prop(keyPath: \Props.result, value: Result<Int, TestError>.success(500)),
+      Prop(keyPath: \Props.range, value: 10..<20),
+      Prop(keyPath: \Props.closedRange, value: 10...20),
+      Prop(keyPath: \Props.tuple, value: (2, "b")),
+      Prop(keyPath: \Props.arrayInt, value: [10, 11]),
+      Prop(keyPath: \Props.arrayAny, value: [10, "11"]),
+      Prop(keyPath: \Props.dictInt, value: ["c" : 2, "d" : 3]),
+      Prop(keyPath: \Props.dictAny, value: ["c" : 2, "d" : "3"]),
+      Prop(keyPath: \Props.setInt, value: Set([10, 11])),
+      Prop(keyPath: \Props.optional, value: 2),
+      Prop(keyPath: \Props.date, value: Date(timeIntervalSince1970: 2000)),
+      Prop(keyPath: \Class.lazyInt, value: 2),
+      Prop(keyPath: \Props.observed, value: 2),
+    ]
+    propsSet(object: &object, props: props)
+    propsEqual(object: &object, props: props)
+    
+    var s = object as! Props
+    XCTAssert(s.int == 2)
+    XCTAssert(s.float == 2.0)
+    XCTAssert(s.double == 2.0)
+    XCTAssert(s.char == "b")
+    XCTAssert(s.string == "b")
+    XCTAssert(s.staticString == "b")
+    XCTAssert(s.bool == false)
+    XCTAssert(s.options == .b)
+    XCTAssert(s.enum == .b(10))
+    XCTAssert(s.result == .success(500))
+    XCTAssert(s.range == 10..<20)
+    XCTAssert(s.closedRange  == 10...20)
+    XCTAssert(s.tuple == (2, "b"))
+    XCTAssert(s.arrayInt == [10, 11])
+    XCTAssert(s.arrayAny == [10, "11"])
+    XCTAssert(s.dictInt == ["c" : 2, "d" : 3])
+    XCTAssert(s.dictAny == ["c" : 2, "d" : "3"])
+    XCTAssert(s.setInt == [10, 11])
+    XCTAssert(s.optional == 2)
+    XCTAssert(s.date == Date(timeIntervalSince1970: 2000))
+    XCTAssert(s.lazyInt == 2)
+    XCTAssert(s.observed == 2)
+  }
+  
+  func test_struct_key_path() {
+    class Class2 {
+      let s = Class()
+    }
+    struct Struct2: KeyValueCoding {
+      let s = Struct()
+    }
+    var object: any KeyValueCoding = Struct2()
+    
+    let props = [
+      Prop(keyPath: \Struct2.s.int, value: 1),
+      Prop(keyPath: \Struct2.s.float, value: Float(1.0)),
+      Prop(keyPath: \Struct2.s.double, value: 1.0),
+      Prop(keyPath: \Struct2.s.char, value: Character("a")),
+      Prop(keyPath: \Struct2.s.string, value: "string"),
+      Prop(keyPath: \Struct2.s.staticString, value: StaticString("static")),
+      Prop(keyPath: \Struct2.s.bool, value: true),
+      Prop(keyPath: \Struct2.s.options, value: Options.a),
+      Prop(keyPath: \Struct2.s.enum, value: Enum.a),
+      Prop(keyPath: \Struct2.s.result, value: Result<Int, TestError>.success(200)),
+      Prop(keyPath: \Struct2.s.range, value: 0..<3),
+      Prop(keyPath: \Struct2.s.closedRange, value: 0...3),
+      Prop(keyPath: \Struct2.s.tuple, value: (1, "a")),
+      Prop(keyPath: \Struct2.s.arrayInt, value: [1, 2]),
+      Prop(keyPath: \Struct2.s.arrayAny, value: [1, "2"]),
+      Prop(keyPath: \Struct2.s.dictInt, value: ["a" : 1, "b" : 2]),
+      Prop(keyPath: \Struct2.s.dictAny, value: ["a" : 1, "b" : "2"]),
+      Prop(keyPath: \Struct2.s.setInt, value: Set([1, 2])),
+      Prop(keyPath: \Struct2.s.optional, value: 1),
+      Prop(keyPath: \Struct2.s.optional, value: Optional<Int>.some(1)),
+      Prop(keyPath: \Struct2.s.date, value: Date(timeIntervalSince1970: 1000)),
+      Prop(keyPath: \Class2.s.lazyInt, value: nil),
+      Prop(keyPath: \Struct2.s.observed, value: 1),
+    ]
+    
+    propsEqual(object: &object, props: props)
+  }
+  
+  func test_struct_optional_key_path() {
+    class S: KeyValueCoding {
+      let i: Int? = nil
+      lazy var a: Int = { XCTFail(); return 11 }()
+    }
+    
+    var s = S()
+    
+    XCTAssert(s[\S.i] == nil)
+    s[\S.i] = 1
+    XCTAssert(s[\S.i] == 1)
+    XCTAssert(s.i == 1)
+    
+    XCTAssert(s[\S.a] == nil)
+    s[\S.a] = 2
+    XCTAssert(s[\S.a] == 2)
+    XCTAssert(s.a == 2)
+  }
+  
+  func test_class() {
+    var object: any KeyValueCoding = Class()
+    propsEqual(object: &object, props: props)
+  }
+  
+  func test_class_inheritance() {
+    class Class2: Class {
+    }
+    
+    var c: any KeyValueCoding = Class2()
+    propsEqual(object: &c, props: props)
+  }
+  
+  func test_class_override() {
+    class C1: KeyValueCoding {
+      var a: String = "C1"
+    }
+    
+    class C2: C1 {
+      override var a: String {
+        get { XCTFail(); return "C2" }
+        set { XCTFail() }
+      }
+    }
+    
+    var c1 = C1()
+    XCTAssert(c1[\C1.a] == "C1")
+    
+    var c2 = C2()
+    XCTAssert(c2[\C2.a] == "C1")
+    c2[\C2.a] = "C11"
+    XCTAssert(c2[\C2.a] == "C11")
+  }
+  
+  func test_class_objc() {
+    class C: NSObject, KeyValueCoding {
+      let a = 1
+      @objc let b = 2
+    }
+    
+    var c = C()
+    XCTAssert(c[\C.a] == 1)
+    XCTAssert(c[\C.b] == 2)
+  }
+  
+  func test_computed() {
+    struct S: KeyValueCoding {
+      var computed: Int { XCTFail(); return 1 }
+    }
+    
+    var s = S()
+    XCTAssertNil(s[\S.computed])
+    s[\S.computed] = 10
+    XCTAssertNil(s[\S.computed])
   }
 }
 

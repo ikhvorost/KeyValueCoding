@@ -65,20 +65,20 @@ fileprivate func withPointer<T>(_ instance: inout T, _ body: (UnsafeMutableRawPo
 fileprivate func withProperty<T>(_ instance: inout T, keyPath: [String], _ body: (Metadata, UnsafeMutableRawPointer) -> Any?) -> Any? {
   withPointer(&instance) { pointer, metadata in
     var keys = keyPath
-    guard let key = keys.popLast(), let property = (metadata.properties.first { $0.name == key }) else {
+    guard let key = keys.popLast(), let prop = metadata.properties.first(where: { $0.name == key }) else {
       return nil
     }
     
-    let pointer = pointer.advanced(by: property.offset)
+    let pointer = pointer.advanced(by: prop.offset)
     
     if keys.isEmpty {
-      return body(property.metadata, pointer)
+      return body(prop.metadata, pointer)
     }
-    else if var value = property.metadata.get(from: pointer) {
+    else if var value = prop.metadata.get(from: pointer) {
       defer {
         let metadata = swift_metadata(of: type(of: value))
         if metadata.kind == .struct {
-          property.metadata.set(value: value, pointer: pointer)
+          prop.metadata.set(value: value, pointer: pointer)
         }
       }
       return withProperty(&value, keyPath: keys, body)
@@ -100,7 +100,7 @@ fileprivate func key(keyPath: AnyKeyPath) -> String {
 ///     - type: Type of a metatype instance.
 /// - Returns: Metadata of the type.
 public func swift_metadata(of type: Any.Type) -> Metadata {
-  MetadataCache.shared.metadata(of: type)
+  Metadata(type: type)
 }
 
 /// Returns the metadata of the instance.

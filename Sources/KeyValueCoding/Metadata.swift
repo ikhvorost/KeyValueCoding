@@ -27,15 +27,6 @@
 import Foundation
 
 
-@discardableResult
-fileprivate func synchronized<T : AnyObject, U>(_ obj: T, closure: () -> U) -> U {
-  objc_sync_enter(obj)
-  defer {
-    objc_sync_exit(obj)
-  }
-  return closure()
-}
-
 /// Metadata for a type.
 public struct Metadata {
   
@@ -151,7 +142,7 @@ public struct Metadata {
     }
   }
   
-  fileprivate init(type: Any.Type) {
+  init(type: Any.Type) {
     self.type = type
     self.kind = Kind.kind(of: type)
     self.container = ProtocolTypeContainer(type: type)
@@ -188,23 +179,3 @@ extension Metadata: CustomStringConvertible {
     return "Metadata(type: \(type), kind: .\(kind), size: \(size), properties: \(properties))"
   }
 }
-
-class MetadataCache {
-  
-  static let shared = MetadataCache()
-  
-  private var cache = [String : Metadata]()
-  
-  func metadata(of type: Any.Type) -> Metadata {
-    synchronized(self) {
-      let key = String(describing: type)
-      guard let metadata = cache[key] else {
-        let metadata = Metadata(type: type)
-        cache[key] = metadata
-        return metadata
-      }
-      return metadata
-    }
-  }
-}
-
