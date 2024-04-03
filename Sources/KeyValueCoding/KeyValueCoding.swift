@@ -34,78 +34,34 @@ extension KeyValueCoding {
     swift_metadata(of: self)
   }
   
-  /// Returns a value for a property identified by a given name or a key path.
-  ///
-  /// - Parameters:
-  ///   - key: The name of one of the instance's properties or a key path of the form
-  ///           relationship.property (with one or more relationships):
-  ///           for example “department.name” or “department.manager.lastName.”
-  /// - Returns: The value for the property identified by a name or a key path.
-  public mutating func value(key: String) -> Any? {
-    swift_value(of: &self, key: key)
-  }
-  
-  public mutating func value<U>(key: String) -> U? {
-    value(key: key) as? U
-  }
-  
-  public mutating func value(keyPath: AnyKeyPath) -> Any? {
-    swift_value(of: &self, keyPath: keyPath)
-  }
-  
-  public mutating func value<U>(keyPath: AnyKeyPath) -> U? {
-    value(keyPath: keyPath) as? U
-  }
-  
-  /// Sets a property specified by a given name or a key path to a given value.
-  ///
-  /// - Parameters:
-  ///   - value: The value for the property identified by a name or a key path.
-  ///   - key: The name of one of the instance's properties or a key path of the form
-  ///           relationship.property (with one or more relationships):
-  ///           for example “department.name” or “department.manager.lastName.”
-  public mutating func setValue(_ value: Any?, key: String) {
-    swift_setValue(value, to: &self, key: key)
-  }
-  
-  public mutating func setValue(_ value: Any?, keyPath: AnyKeyPath) {
-    swift_setValue(value, to: &self, keyPath: keyPath)
-  }
-  
   /// Gets and sets a value for a property identified by a given name or a key path.
   public subscript(key: String) -> Any? {
     mutating get {
-      value(key: key)
+      swift_value(of: &self, key: key)
     }
     set {
-      setValue(newValue, key: key)
+      swift_setValue(newValue, to: &self, key: key)
     }
   }
   
   public subscript<T>(key: String) -> T? {
     mutating get {
-      value(key: key)
-    }
-    set {
-      setValue(newValue, key: key)
+      swift_value(of: &self, key: key) as? T
     }
   }
   
   public subscript(keyPath: AnyKeyPath) -> Any? {
     mutating get {
-      value(keyPath: keyPath)
+      swift_value(of: &self, keyPath: keyPath)
     }
     set {
-      setValue(newValue, keyPath: keyPath)
+      swift_setValue(newValue, to: &self, keyPath: keyPath)
     }
   }
   
-  public subscript<U>(keyPath: AnyKeyPath) -> U? {
+  public subscript<T>(keyPath: AnyKeyPath) -> T? {
     mutating get {
-      value(keyPath: keyPath)
-    }
-    set {
-      setValue(newValue, keyPath: keyPath)
+      swift_value(of: &self, keyPath: keyPath) as? T
     }
   }
 }

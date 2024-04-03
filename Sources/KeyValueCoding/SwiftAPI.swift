@@ -26,7 +26,7 @@
 
 fileprivate func withPointer<T>(_ instance: inout T, _ body: (UnsafeMutableRawPointer, Metadata) -> Any?) -> Any? {
   withUnsafePointer(to: &instance) {
-    let metadata = swift_metadata(of: T.self)
+    let metadata = Metadata(of: T.self)
     if metadata.kind == .struct {
       return body(UnsafeMutableRawPointer(mutating: $0), metadata)
     }
@@ -38,7 +38,7 @@ fileprivate func withPointer<T>(_ instance: inout T, _ body: (UnsafeMutableRawPo
     else if metadata.kind == .existential {
       return $0.withMemoryRebound(to: ExistentialContainer.self, capacity: 1) {
         let type = $0.pointee.type
-        let metadata = swift_metadata(of: type)
+        let metadata = Metadata(of: type)
         if metadata.kind == .class {
           return $0.withMemoryRebound(to: UnsafeMutableRawPointer.self, capacity: 1) {
             body($0.pointee, metadata)
@@ -76,7 +76,7 @@ fileprivate func withProperty<T>(_ instance: inout T, keyPath: [String], _ body:
     }
     else if var value = prop.metadata.get(from: pointer) {
       defer {
-        let metadata = swift_metadata(of: type(of: value))
+        let metadata = Metadata(of: value)
         if metadata.kind == .struct {
           prop.metadata.set(value: value, pointer: pointer)
         }
@@ -100,7 +100,7 @@ fileprivate func key(keyPath: AnyKeyPath) -> String {
 ///     - type: Type of a metatype instance.
 /// - Returns: Metadata of the type.
 public func swift_metadata(of type: Any.Type) -> Metadata {
-  Metadata(type: type)
+  Metadata(of: type)
 }
 
 /// Returns the metadata of the instance.
@@ -108,9 +108,8 @@ public func swift_metadata(of type: Any.Type) -> Metadata {
 /// - Parameters:
 ///     - instance: Instance of any type.
 /// - Returns: Metadata of the type.
-public func swift_metadata(of instance: Any) -> Metadata {
-  let type = type(of: instance)
-  return swift_metadata(of: type)
+public func swift_metadata(of value: Any) -> Metadata {
+  Metadata(of: value)
 }
 
 /// Returns the value for the instance's property identified by a given name or a key path.

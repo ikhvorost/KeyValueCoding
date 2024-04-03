@@ -111,17 +111,11 @@ public struct Metadata {
   public let properties: [Property]
   
   private static func enumProperties(type: Any.Type, kind: Kind) -> [Property] {
-    guard kind == .class || kind == .struct else {
-      return []
-    }
-    
     let count = swift_reflectionMirror_recursiveCount(type)
     var fieldMetadata = _FieldReflectionMetadata()
-    return (0..<count).compactMap {
-      let propertyType = swift_reflectionMirror_recursiveChildMetadata(type, index: $0, fieldMetadata: &fieldMetadata)
+    return (0..<count).map {
+      let propType = swift_reflectionMirror_recursiveChildMetadata(type, index: $0, fieldMetadata: &fieldMetadata)
       defer { fieldMetadata.freeFunc?(fieldMetadata.name) }
-      
-      let offset = swift_reflectionMirror_recursiveChildOffset(type, index: $0)
       
       assert(fieldMetadata.name != nil)
       var name = String(cString: fieldMetadata.name!)
@@ -133,20 +127,25 @@ public struct Metadata {
         isLazy = true
       }
       
-      return Property(name: name,
-                      isStrong: fieldMetadata.isStrong,
-                      isVar: fieldMetadata.isVar,
-                      isLazy: isLazy,
-                      offset: offset,
-                      metadata: swift_metadata(of: propertyType))
+      let offset = swift_reflectionMirror_recursiveChildOffset(type, index: $0)
+      let metadata = Metadata(of: propType)
+      
+      return Property(name: name, isStrong: fieldMetadata.isStrong, isVar: fieldMetadata.isVar, isLazy: isLazy, offset: offset, metadata: metadata)
     }
   }
   
-  init(type: Any.Type) {
+  init(of type: Any.Type) {
     self.type = type
     self.kind = Kind.kind(of: type)
     self.container = ProtocolTypeContainer(type: type)
-    self.properties = Self.enumProperties(type: type, kind: self.kind)
+    self.properties = kind == .class || kind == .struct
+      ? Self.enumProperties(type: type, kind: self.kind)
+      : []
+  }
+  
+  init(of value: Any) {
+    let type = Swift.type(of: value)
+    self.init(of: type)
   }
   
   func get(from pointer: UnsafeRawPointer) -> Any? {
