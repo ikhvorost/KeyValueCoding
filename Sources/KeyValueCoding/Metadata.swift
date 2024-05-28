@@ -84,10 +84,10 @@ public struct Metadata {
     /// Is strong referenced property.
     public let isStrong: Bool
     
+    public let isLazy: Bool
+    
     /// Is variable property.
     public let isVar: Bool
-    
-    public let isLazy: Bool
     
     /// Offset of the property.
     public let offset: Int
@@ -130,7 +130,7 @@ public struct Metadata {
       let offset = swift_reflectionMirror_recursiveChildOffset(type, index: $0)
       let metadata = Metadata(of: propType)
       
-      return Property(name: name, isStrong: fieldMetadata.isStrong, isVar: fieldMetadata.isVar, isLazy: isLazy, offset: offset, metadata: metadata)
+      return Property(name: name, isStrong: fieldMetadata.isStrong, isLazy: isLazy, isVar: fieldMetadata.isVar, offset: offset, metadata: metadata)
     }
   }
   
@@ -168,7 +168,7 @@ public struct Metadata {
 extension Metadata.Property: CustomStringConvertible {
   /// A textual representation the `Metadata.Property`.
   public var description: String {
-    return "Property(name: '\(name)', isStrong: \(isStrong), isVar: \(isVar), offset: \(offset))"
+    return "Property(name: '\(name)', isStrong: \(isStrong), isLazy: \(isLazy), isVar: \(isVar), offset: \(offset))"
   }
 }
 

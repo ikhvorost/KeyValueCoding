@@ -1,8 +1,8 @@
 //
-//  Accessor.swift
+//  Zip3.swift
 //
-//  Created by Iurii Khvorost <iurii.khvorost@gmail.com> on 2022/04/23.
-//  Copyright © 2022 Iurii Khvorost. All rights reserved.
+//  Created by Iurii Khvorost <iurii.khvorost@gmail.com> on 2024/05/16.
+//  Copyright © 2024 Iurii Khvorost. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -23,31 +23,27 @@
 //  THE SOFTWARE.
 //
 
+import Foundation
 
-protocol Accessor {}
 
-extension Accessor {
+struct Zip3Sequence<E1, E2, E3>: Sequence, IteratorProtocol {
+  private let _next: () -> (E1, E2, E3)?
   
-  static func get(from pointer: UnsafeRawPointer) -> Any {
-    pointer.assumingMemoryBound(to: Self.self).pointee
-  }
-  
-  static func set(value: Any, pointer: UnsafeMutableRawPointer) {
-    if let value = value as? Self {
-      pointer.assumingMemoryBound(to: self).pointee = value
+  init<S1: Sequence, S2: Sequence, S3: Sequence>(_ s1: S1, _ s2: S2, _ s3: S3) where S1.Element == E1, S2.Element == E2, S3.Element == E3 {
+    var it1 = s1.makeIterator()
+    var it2 = s2.makeIterator()
+    var it3 = s3.makeIterator()
+    _next = {
+      guard let e1 = it1.next(), let e2 = it2.next(), let e3 = it3.next() else { return nil }
+      return (e1, e2, e3)
     }
   }
   
-  static var size: Int {
-    MemoryLayout<Self>.size
+  mutating func next() -> (E1, E2, E3)? {
+    return _next()
   }
 }
 
-struct ProtocolTypeContainer {
-  let type: Any.Type
-  let witnessTable = 0
-  
-  var accessor: Accessor.Type {
-    unsafeBitCast(self, to: Accessor.Type.self)
-  }
+func zip3<S1: Sequence, S2: Sequence, S3: Sequence>(_ s1: S1, _ s2: S2, _ s3: S3) -> Zip3Sequence<S1.Element, S2.Element, S3.Element> {
+  return Zip3Sequence(s1, s2, s3)
 }

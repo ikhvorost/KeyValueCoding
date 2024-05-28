@@ -11,10 +11,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    
     - name: Build
-      run: swift build -v
-    - name: Run tests
+      run: swift build
+    
+    - name: Test
       run: |
-        swift test --enable-code-coverage -v
+        swift test --enable-code-coverage
         xcrun llvm-cov export -format="lcov" .build/debug/KeyValueCodingPackageTests.xctest/contents/macos/KeyValueCodingPackageTests -instr-profile .build/debug/codecov/default.profdata -ignore-filename-regex='Tests' > info.lcov
-        bash <(curl -s https://codecov.io/bash)
+
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

@@ -109,7 +109,8 @@ public func swift_metadata(of type: Any.Type) -> Metadata {
 ///     - instance: Instance of any type.
 /// - Returns: Metadata of the type.
 public func swift_metadata(of value: Any) -> Metadata {
-  Metadata(of: value)
+  let type = Swift.type(of: value)
+  return swift_metadata(of: type)
 }
 
 /// Returns the value for the instance's property identified by a given name or a key path.
