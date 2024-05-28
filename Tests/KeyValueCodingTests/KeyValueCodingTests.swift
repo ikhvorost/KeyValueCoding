@@ -325,11 +325,12 @@ final class KeyValueCodingTests: XCTestCase {
     ]
     XCTAssert(objects.count == metadatas.count)
     
-    zip(objects, metadatas).forEach { (object, metadata) in
-      XCTAssert(object.metadata.kind == metadata.kind)
-      XCTAssert(object.metadata.type == metadata.type)
-      XCTAssert(object.metadata.size == metadata.size, "\(object.metadata.size)")
-      XCTAssert(object.metadata.properties.count == 23)
+    zip(objects, metadatas).forEach { (object, item) in
+      let metadata = object.metadata
+      XCTAssert(metadata.kind == item.kind)
+      XCTAssert(metadata.type == item.type)
+      XCTAssert(metadata.size == item.size, "\(metadata.size)")
+      XCTAssert(metadata.properties.count == 23)
       
       let props: [(name: String, isStrong: Bool, isLazy: Bool, isVar: Bool, type: Any.Type)] = [
         ("int", true, false, false, Int.self),
@@ -357,9 +358,9 @@ final class KeyValueCodingTests: XCTestCase {
         ("classA", true, false, true, A.self),
       ]
       
-      XCTAssert(object.metadata.properties.count == props.count)
+      XCTAssert(metadata.properties.count == props.count)
       
-      zip(object.metadata.properties, props).forEach { (prop, item) in
+      zip(metadata.properties, props).forEach { (prop, item) in
         let (name, isStrong, isLazy, isVar, type) = item
         
         XCTAssert(prop.name == name, name)
@@ -369,6 +370,17 @@ final class KeyValueCodingTests: XCTestCase {
         XCTAssert(prop.metadata.type == type, name)
       }
     }
+  }
+  
+  func test_metadata_text() {
+    struct A {
+      let a = 10
+      let b = "b"
+    }
+    
+    let metadata = swift_metadata(of: A.self)
+    let description = metadata.description
+    XCTAssert("\(description)" == "Metadata(type: A, kind: .struct, size: 24, properties: [Property(name: 'a', isStrong: true, isLazy: false, isVar: false, offset: 0), Property(name: 'b', isStrong: true, isLazy: false, isVar: false, offset: 8)])")
   }
   
   func test_default() {
@@ -485,12 +497,15 @@ final class KeyValueCodingTests: XCTestCase {
   func test_composition() {
     struct A {
       let a = "a"
+      let optA: String? = "a"
     }
     struct B {
       let a = A()
+      let optA: A? = A()
     }
     struct C: KeyValueCoding {
       let b = B()
+      let optB: B? = B()
     }
     
     var c = C()
@@ -501,5 +516,12 @@ final class KeyValueCodingTests: XCTestCase {
     XCTAssert(c["b.a.a"] == "b")
     XCTAssert(c[\C.b.a.a] == "b")
     XCTAssert(c.b.a.a == "b")
+    
+    XCTAssert(c["optB.optA.optA"] == "a")
+    XCTAssert(c[\C.optB?.optA?.optA] == "a")
+    c["optB.optA.optA"] = "b"
+    XCTAssert(c["optB.optA.optA"] == "b")
+    XCTAssert(c[\C.optB?.optA?.optA] == "b")
+    XCTAssert(c.optB?.optA?.optA == "b")
   }
 }
