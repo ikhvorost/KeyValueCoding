@@ -6,12 +6,6 @@ enum TestError: Error, Equatable {
   case fail
 }
 
-extension StaticString : Equatable {
-  public static func == (lhs: StaticString, rhs: StaticString) -> Bool {
-    "\(lhs)" == "\(rhs)"
-  }
-}
-
 struct Options: OptionSet {
   let rawValue: Int
   
@@ -523,5 +517,18 @@ final class KeyValueCodingTests: XCTestCase {
     XCTAssert(c["optB.optA.optA"] == "b")
     XCTAssert(c[\C.optB?.optA?.optA] == "b")
     XCTAssert(c.optB?.optA?.optA == "b")
+  }
+  
+  func test_lazy() {
+    struct A: KeyValueCoding {
+      lazy var a: Int = { 1 }()
+    }
+    
+    var a = A()
+    XCTAssert(a.a == 1)
+    
+    a["a"] = 2
+    XCTAssert(a["a"] == 2)
+    XCTAssert(a.a == 2)
   }
 }
