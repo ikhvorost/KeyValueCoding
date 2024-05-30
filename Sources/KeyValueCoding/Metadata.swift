@@ -27,7 +27,7 @@
 import Foundation
 
 
-/// Metadata for a type.
+/// The metadata for a type.
 public struct Metadata {
   
   /// The metadata kind for a type.
@@ -76,38 +76,39 @@ public struct Metadata {
     }
   }
   
-  /// Property details.
+  /// The property details.
   public struct Property {
-    /// Name of the property.
+    /// The name of the property.
     public let name: String
     
-    /// Is strong referenced property.
+    /// A Boolean value indicating whether the property is strong.
     public let isStrong: Bool
     
+    /// A Boolean value indicating whether the property is lazy.
     public let isLazy: Bool
     
-    /// Is variable property.
+    /// A Boolean value indicating whether the property is variable.
     public let isVar: Bool
     
-    /// Offset of the property.
+    /// The offset of the property.
     public let offset: Int
     
-    /// Metadata of the property.
+    /// The metadata of the property.
     public let metadata: Metadata
   }
   
   private let container: ProtocolTypeContainer
   
-  /// Type.
+  /// The type of the metadata.
   public let type: Any.Type
   
-  /// Kind of the type.
+  /// The kind of the type.
   public let kind: Kind
   
-  /// Size of the type.
+  /// The size of the type.
   public var size: Int { container.accessor.size }
   
-  /// Accessible properties of the type.
+  /// The accessible properties of the type.
   public let properties: [Property]
   
   private static func enumProperties(type: Any.Type, kind: Kind) -> [Property] {
@@ -166,14 +167,14 @@ public struct Metadata {
 }
 
 extension Metadata.Property: CustomStringConvertible {
-  /// A textual representation the `Metadata.Property`.
+  /// The textual representation the `Metadata.Property`.
   public var description: String {
     return "Property(name: '\(name)', isStrong: \(isStrong), isLazy: \(isLazy), isVar: \(isVar), offset: \(offset))"
   }
 }
 
 extension Metadata: CustomStringConvertible {
-  /// A textual representation the `Metadata`.
+  /// The textual representation the `Metadata`.
   public var description: String {
     return "Metadata(type: \(type), kind: .\(kind), size: \(size), properties: \(properties))"
   }

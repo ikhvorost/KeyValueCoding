@@ -113,14 +113,14 @@ public func swift_metadata(of value: Any) -> Metadata {
   return swift_metadata(of: type)
 }
 
-/// Returns the value for the instance's property identified by a given name or a key path.
+/// Returns the value for the instance's property identified by a given string name(path).
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
-///     - key: The name of one of the instance's properties or a key path of the form
+///     - key: The string name(path) of one of the instance's properties of the form
 ///            relationship.property (with one or more relationships):
 ///            for example “department.name” or “department.manager.lastName.”
-/// - Returns: The value for the property identified by a name or a key path.
+/// - Returns: The value of the property.
 public func swift_value<T>(of instance: inout T, key: String) -> Any? {
   let keyPath: [String] = key.components(separatedBy: ".").reversed()
   return withProperty(&instance, keyPath: keyPath) { metadata, pointer in
@@ -128,17 +128,23 @@ public func swift_value<T>(of instance: inout T, key: String) -> Any? {
   }
 }
 
+/// Returns the value for the instance's property identified by a key path.
+///
+/// - Parameters:
+///     - instance: Instance of any type.
+///     - keyPath: Key path.
+/// - Returns: The value for the property.
 public func swift_value<T>(of instance: inout T, keyPath: AnyKeyPath) -> Any? {
   let key = key(keyPath: keyPath)
   return swift_value(of: &instance, key: key)
 }
 
-/// Sets a property of an instance specified by a given name or a key path to a given value.
+/// Sets a property of an instance specified by a given string name(path) to a given value.
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
-///     - value: The value for the property identified by a name or a key path.
-///     - key: The name of one of the instance's properties or a key path of the form
+///     - value: The value for the property.
+///     - key: The string name(path) of one of the instance's properties of the form
 ///            relationship.property (with one or more relationships):
 ///            for example “department.name” or “department.manager.lastName.”
 public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {
@@ -148,6 +154,12 @@ public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {
   }
 }
 
+/// Sets a property of an instance specified by a given key path to a given value.
+///
+/// - Parameters:
+///     - instance: Instance of any type.
+///     - value: The value for the property.
+///     - key: The key path of one of the instance's properties.
 public func swift_setValue<T>(_ value: Any?, to: inout T, keyPath: AnyKeyPath) {
   let key = key(keyPath: keyPath)
   swift_setValue(value, to: &to, key: key)
