@@ -24,7 +24,7 @@
 //
 
 
-/// Protocol to access to properties of an instance indirectly by a string name(path) or a key path.
+/// Protocol to access to properties of an instance indirectly by a string key or a key path.
 public protocol KeyValueCoding {}
 
 extension KeyValueCoding {
@@ -34,7 +34,7 @@ extension KeyValueCoding {
     swift_metadata(of: self)
   }
   
-  /// Gets and sets a value for a property identified by a given string name(path).
+  /// Gets and sets a value for a property identified by a given string key.
   public subscript(key: String) -> Any? {
     mutating get {
       swift_value(of: &self, key: key)
@@ -44,7 +44,7 @@ extension KeyValueCoding {
     }
   }
   
-  /// Gets a typed value for a property identified by a given string name(path).
+  /// Gets a typed value for a property identified by a given string key.
   public subscript<T>(key: String) -> T? {
     mutating get {
       swift_value(of: &self, key: key) as? T

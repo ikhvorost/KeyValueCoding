@@ -113,11 +113,11 @@ public func swift_metadata(of value: Any) -> Metadata {
   return swift_metadata(of: type)
 }
 
-/// Returns the value for the instance's property identified by a given string name(path).
+/// Returns the value for the instance's property identified by a given string key.
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
-///     - key: The string name(path) of one of the instance's properties of the form
+///     - key: The string key of one of the instance's properties of the form
 ///            relationship.property (with one or more relationships):
 ///            for example “department.name” or “department.manager.lastName.”
 /// - Returns: The value of the property.
@@ -139,12 +139,12 @@ public func swift_value<T>(of instance: inout T, keyPath: AnyKeyPath) -> Any? {
   return swift_value(of: &instance, key: key)
 }
 
-/// Sets a property of an instance specified by a given string name(path) to a given value.
+/// Sets a property of an instance specified by a given string key to a given value.
 ///
 /// - Parameters:
 ///     - instance: Instance of any type.
 ///     - value: The value for the property.
-///     - key: The string name(path) of one of the instance's properties of the form
+///     - key: The string key of one of the instance's properties of the form
 ///            relationship.property (with one or more relationships):
 ///            for example “department.name” or “department.manager.lastName.”
 public func swift_setValue<T>(_ value: Any?, to: inout T, key: String) {

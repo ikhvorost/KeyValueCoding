@@ -1,33 +1,30 @@
 # KeyValueCoding
 
-[![Swift 5](https://img.shields.io/badge/Swift-5-f48041.svg?style=flat)](https://developer.apple.com/swift)
-![Platforms: iOS, macOS, tvOS, watchOS](https://img.shields.io/badge/Platforms-iOS%20|%20macOS%20|%20tvOS%20|%20watchOS%20-blue.svg?style=flat)
-[![Swift Package Manager: compatible](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-4BC51D.svg?style=flat)](https://swift.org/package-manager/)
+[![Swift 5.10, 5.9, 5.8, 5.7](https://img.shields.io/badge/Swift-5.10%20|%205.9|%205.8|%205.7-f48041.svg?style=flat&logo=swift)](https://developer.apple.com/swift)
+![Platforms: iOS, macOS, tvOS, visionOS, watchOS](https://img.shields.io/badge/Platforms-iOS%20|%20macOS%20|%20tvOS%20|%20visionOS%20|%20watchOS%20-blue.svg?style=flat&logo=apple)
+[![Swift Package Manager: compatible](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-4BC51D.svg?style=flat&logo=apple)](https://swift.org/package-manager/)
 [![Build](https://github.com/ikhvorost/KeyValueCoding/actions/workflows/swift.yml/badge.svg?branch=main)](https://github.com/ikhvorost/KeyValueCoding/actions/workflows/swift.yml)
 [![Codecov](https://codecov.io/gh/ikhvorost/KeyValueCoding/branch/main/graph/badge.svg?token=26NymxLQyB)](https://codecov.io/gh/ikhvorost/KeyValueCoding)
-[![Swift Doc Coverage](https://img.shields.io/badge/Swift%20Doc%20Coverage-100%25-f39f37)](https://github.com/SwiftDocOrg/swift-doc)
+[![Swift Doc Coverage](https://img.shields.io/badge/Swift%20Doc%20Coverage-100%25-f39f37?logo=google-docs&logoColor=white)](https://github.com/ikhvorost/swift-doc-coverage)
 
 [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/donate/?hosted_button_id=TSPDD3ZAAH24C)
 
-`KeyValueCoding` provides a mechanism by which you can access the properties of pure Swift struct or class instances indirectly by a property name or a key path.
+`KeyValueCoding` provides a mechanism by which you can access the properties of pure Swift `struct` or `class` instances indirectly by a string key or a key path.
 
 - [Getting Started](#gettingstarted)
   - [Basics](#basics)
-  - [Subscript](#subscript)
+  - [Relationship](#relationship)
   - [Class Inheritance](#class-inheritance)
-  - [NSObject](#nsobject)
-  - [Struct](#struct)
   - [Protocols](#protocols)
-  - [Functions](#functions)
-- [KeyValueCoding Protocol](#keyvaluecoding-protocol)
+  - [swift_value & swift_setValue](#swift_value--swift_setvalue)
+- [KeyValueCoding](#keyvaluecoding-protocol)
   - [metadata](#metadata)
-  - [value(key:)](#valuekey)
-  - [setValue(_:, key:)](#setvalue_-key)
   - [[key]](#key)
-- [API](#api)
-  - [swift_metadata()](#swift_metadata)
-  - [swift_value(of:, key:)](#swift_valueof-key)
-  - [swift_setValue<T>(_:, to:, key:)](#swift_setvalue_-to-key)
+  - [[keyPath]](#keypath)
+- [KeyValueCoding API](#keyvaluecoding-api)
+  - [swift_metadata](#swift_metadata)
+  - [swift_value](#swift_value)
+  - [swift_setValue](#swift_setvalue)
 - [Installation](#installation)
 - [License](#license)
 
@@ -35,321 +32,333 @@
 
 ## Basics
 
-The basic methods of `KeyValueCoding` protocol for accessing an instance’s values are `setValue(_ value: Any?, key: String)`, which sets the value for the property identified by the specified name or key path, and `value(key: String) -> Any?`, which returns the value for the property identified by the specified name or key path.
+The basic approach of `KeyValueCoding` protocol for accessing an instance’s properties values is subscripting by string key or a key path. In order to make your types key-value coding compliant just adopt them from this protocol, for instance:
 
-Thus, **all of the properties** can be accessible in a consistent manner including:
-
-- Constant `let` and variable `var` properties.
-- Properties with any access level: `public`, `internal`, `private`.
-- Properties of any type: `enum`, `optional`, `struct`, `class` etc.
-- Relationship properties by the key path form "relationship.property" (with one or more relationships), for example "contactInfo.email" etc.
-
-There are **next limitations**:
-
-- Computed properties are not addressable.
-- The `willSet` and `didSet` observers aren’t called while you set values.
-
-In order to make your types key-value coding compliant just adopt them from the `KeyValueCoding` protocol, for instance:
-
-```swift
+``` swift
 import KeyValueCoding
 
-enum UserType {
-    case none
-    case guest
-    case user
-    case admin
+struct Resolution: KeyValueCoding {
+  let width: Int
+  let height: Int
 }
 
-class ContactInfo {
-    let phone: String = ""
-    let email: String = ""
-}
+var resolution = Resolution(width: 640, height: 480)
 
-class User: KeyValueCoding {
-    private let id: Int = 0
-    let type: UserType = .none
-    let name: String = ""
-    let SSN: Int? = nil
-    let contactInfo = ContactInfo()
-}
+resolution["width"] = 1920
+resolution["height"] = 1080
 
-var user = User()
-
-user.setValue(123, key: "id")
-user.setValue(UserType.guest, key: "type")
-user.setValue("Bob", key: "name")
-user.setValue(123456789, key: "SSN")
-user.setValue("bob@mail.com", key: "contactInfo.email")
-
-guard let id = user.value(key: "id"),
-      let type = user.value(key: "type"),
-      let name = user.value(key: "name"),
-      let ssn = user.value(key: "SSN"),
-      let email = user.value(key: "contactInfo.email")
-else {
-    return
-}
-
-print(id, type, name, ssn, email) // 123 guest Bob 123456789 bob@mail.com
+print(resolution) // Prints: Resolution(width: 1920, height: 1080)
 ```
 
-### Subscript
+> NOTE: An instance variable must be declared as `var`, otherwise you'll have the following error: `Cannot use mutating getter on immutable value`.
 
-You can also use subscripts to set and retrieve values by a name or a key path without needing separate methods for setting and retrieval:
+The same works with the key paths as well:
 
-```swift
-var user = User()
+``` swift
+resolution[\Resolution.width] = 2560
+resolution[\Resolution.height] = 1440
 
-user["id"] = 123
-user["type"] = UserType.guest
-user["name"] = "Bob"
-user["SSN"] = 123456789
-user["contactInfo.email"] = "bob@mail.com"
+print(resolution) // Prints: Resolution(width: 2560, height: 1440)
+```
 
-guard let id = user["id"],
-      let type = user["type"],
-      let name = user["name"],
-      let ssn = user["SSN"],
-      let email = user["contactInfo.email"]
-else {
-    return
+You can also read properties values in the same way:
+
+``` swift
+if let width: Int = resolution[\Resolution.width], let height: Int = resolution[\Resolution.height] {
+  print("\(width)x\(height)") // Prints: 2560x1440
+}
+```
+
+The following properties can be accessible for classes and structs in a consistent manner including:
+
+- Constant `let` and variable `var` properties.
+- `lazy`, `@objc` and optional properties.
+- Properties with any access level: `public`, `internal`, `private` etc.
+- Properties of any type: `enum`, `struct`, `class`, tuple etc.
+- Relationship properties by a string key or a key path.
+
+But there are some **limitations**:
+
+- Computed properties are not addressable.
+- The `willSet` and `didSet` observers aren’t being called on changing values.
+- `weak`, `unowned` and the property wrappers are not supported.
+
+### Relationship
+
+`KeyValueCoding` can access to relationship properties by a string key ("relationship.property") or a key path, for example:
+
+``` swift
+import KeyValueCoding
+
+struct Resolution {
+  let width: Int
+  let height: Int
 }
 
-print(id, type, name, ssn, email) // 123 guest Bob 123456789 bob@mail.com
+class VideoMode: KeyValueCoding {
+  let name: String
+  let resolution: Resolution
+  
+  init(name: String, resolution: Resolution) {
+    self.name = name
+    self.resolution = resolution
+  }
+}
+
+var videoMode = VideoMode(name: "HD", resolution: Resolution(width: 1920, height: 1080))
+print("\(videoMode.name) - \(videoMode.resolution.width)x\(videoMode.resolution.height)")
+// Prints: HD - 1920x1080
+
+videoMode[\VideoMode.name] = "4K"
+videoMode[\VideoMode.resolution.width] = 3840
+videoMode[\VideoMode.resolution.height] = 2160
+print("\(videoMode.name) - \(videoMode.resolution.width)x\(videoMode.resolution.height)")
+// Prints: 4K - 3840x2160
 ```
+
+> NOTE: Your parent instance can access to its children's properties without conforming the children to `KeyValueCoding` protocol.
 
 ### Class Inheritance
 
 Properties from inherited classes are also accessible by `KeyValueCoding` protocol:
 
 ```swift
-class A: KeyValueCoding {
-    let a = 0
+import KeyValueCoding
+
+class Mode {
+  let name: String
+  
+  init(name: String) {
+    self.name = name
+  }
 }
 
-class B: A {
-    let b = 0
+class VideoMode: Mode, KeyValueCoding {
+  let frameRate: Int
+  
+  init(name: String, frameRate: Int) {
+    self.frameRate = frameRate
+    super.init(name: name)
+  }
 }
 
-var b = B()
+var videoMode = VideoMode(name: "HD", frameRate: 30)
+print("\(videoMode.name) - \(videoMode.frameRate)fps")
+// Prints: HD - 30fps
 
-b["a"] = 100
-b["b"] = 200
-
-guard let a = b["a"], let b = b["b"] else {
-    return
-}
-print(a, b) // 100 200
-```
-
-### NSObject
-
-`KeyValueCoding` doesn't conflict with key-value conding of `NSObject` class and they can work together:
-
-``` swift
-class Resolution: NSObject, KeyValueCoding {
-    @objc var width = 0
-    @objc var height = 0
-}
-
-var resolution = Resolution()
-
-// NSObject protocol
-resolution.setValue(1024, forKey: "width")
-
-// KeyValueCoding protocol
-resolution.setValue(760, key: "height")
-// OR
-resolution["height"] = 760
-
-print(resolution.width, resolution.height) // 1024 760
-```
-
-### Struct
-
-`KeyValueCoding` works with structs as well:
-
-```swift
-struct Book: KeyValueCoding {
-    let title: String = ""
-    let ISBN: Int = 0
-}
-
-var book = Book()
-
-book["title"] = "The Swift Programming Language"
-book["ISBN"] = 1234567890
-
-print(book) // Book(title: "The Swift Programming Language", ISBN: 1234567890)
+videoMode[\VideoMode.name] = "4K"
+videoMode[\VideoMode.frameRate] = 25
+print("\(videoMode.name) - \(videoMode.frameRate)fps")
+// Prints: 4K - 25fps
 ```
 
 ### Protocols
 
-You can inherit any protocol from `KeyValueCoding` one and then use instances with the protocol type to access to declared properties:
-
-```swift
-protocol BookProtocol: KeyValueCoding {
-    var title: String { get }
-    var ISBN: Int { get }
-}
-
-struct Book: BookProtocol {
-    let title: String = ""
-    let ISBN: Int = 0
-}
-
-var book: BookProtocol = Book()
-
-book["title"] = "The Swift Programming Language"
-book["ISBN"] = 1234567890
-
-print(book) // Book(title: "The Swift Programming Language", ISBN: 1234567890)
-```
-
-### Functions
-
-In additional you can use API functions to set and get values of any properties **without adopting** `KeyValueCoding` protocol at all:
+You can inherit any protocol from `KeyValueCoding` and then all instances of this protocol will be to accessible to read and write their properties:
 
 ``` swift
-struct Song {
-    let name: String
-    let artist: String
+import KeyValueCoding
+
+protocol Size: KeyValueCoding {
+  var width: Int { get }
+  var height: Int { get }
 }
 
-var song = Song(name: "", artist: "")
-
-swift_setValue("Blue Suede Shoes", to: &song, key: "name")
-swift_setValue("Elvis Presley", to: &song, key: "artist")
-
-guard let name = swift_value(of: &song, key: "name"),
-      let artist = swift_value(of: &song, key: "artist")
-else {
-    return
+struct Resolution: Size {
+  let width: Int
+  let height: Int
 }
 
-print(name, "-", artist) // Blue Suede Shoes - Elvis Presley
+var resolution: Size = Resolution(width: 1920, height: 1080)
+print(resolution)
+// Prints: Resolution(width: 1920, height: 1080)
+
+resolution[\Resolution.width] = 3840
+resolution[\Resolution.height] = 2160
+
+if let width: Int = resolution[\Resolution.width], let height: Int = resolution[\Resolution.height] {
+  print("\(width)x\(height)")
+  // Prints: 3840x2160
+}
 ```
 
-## KeyValueCoding Protocol
+### swift_value & swift_setValue
 
-Swift instances of `struct` or `class` that adopt `KeyValueCoding` protocol are key-value coding compliant for their properties and they are addressable via essential methods `value(key:)` and `setValue(_: key:)`.
+In additional you can use pure API functions for getting and setting values of an instance's properties **without adopting** `KeyValueCoding` protocol at all:
+
+``` swift
+import KeyValueCoding
+
+struct Resolution {
+  let width: Int
+  let height: Int
+}
+
+var resolution = Resolution(width: 1920, height: 1080)
+print(resolution)
+// Prints: Resolution(width: 1920, height: 1080)
+
+swift_setValue(3840, to: &resolution, keyPath: \Resolution.width)
+swift_setValue(2160, to: &resolution, keyPath: \Resolution.height)
+
+if let width = swift_value(of: &resolution, keyPath: \Resolution.width) as? Int,
+    let height = swift_value(of: &resolution, keyPath: \Resolution.height) as? Int
+{
+  print("\(width)x\(height)")
+  // Prints: 3840x2160
+}
+```
+
+## KeyValueCoding
+
+Swift instances of `struct` or `class` that adopt `KeyValueCoding` protocol are key-value coding compliant for their properties and they are addressable via essential subscriptions `[key]` and `[keyPath]`.
 
 
 ### metadata
 
-Returns the metadata of the instance which includes its `type`, `kind`, `size` and a list of accessible `properties`:
+Returns the metadata of the instance which includes its type, kind, size and a list of accessible properties:
 
 ```swift
-let user = User()
+import KeyValueCoding
 
-print(user.metadata)
-```
-
-Outputs:
-
-```
-Metadata(type: User, kind: .class, size: 8, properties: [
-  Property(name: 'id', isStrong: true, isVar: false, offset: 16),
-  Property(name: 'type', isStrong: true, isVar: false, offset: 24),
-  Property(name: 'name', isStrong: true, isVar: false, offset: 32),
-  Property(name: 'SSN', isStrong: true, isVar: false, offset: 48)])
-```
-
-### value(key:)
-
-Returns a value for a property identified by a given name or key path.
-
-```swift
-var user = User()
-if let type = user.value(key: "type") {
-    print(type) // none
+struct Resolution: KeyValueCoding {
+  let width: Int
+  let height: Int
 }
+
+let resolution = Resolution(width: 1920, height: 1080)
+print(resolution.metadata)
 ```
 
-### setValue(_:, key:)
+Prints:
 
-Sets a property specified by a given name or key path to a given value.
-
-```swift
-var user = User()
-
-user.setValue(UserType.admin, key: "type")
-
-if let type = user.value(key: "type") {
-    print(type) // admin
-}
+```
+Metadata(type: Resolution, kind: .struct, size: 16, properties: [
+  Property(name: 'width', isStrong: true, isLazy: false, isVar: false, offset: 0), 
+  Property(name: 'height', isStrong: true, isLazy: false, isVar: false, offset: 8)
+])
 ```
 
 ### [key]
 
-Gets and sets a value for a property identified by a name or a key path.
+Gets and sets a value for a property identified by a string key.
 
 ```swift
-var user = User()
+import KeyValueCoding
 
-user["type"] = UserType.guest
+struct Resolution: KeyValueCoding {
+  let width: Int
+  let height: Int
+}
 
-if let type = user["type"] {
-    print(type) // guest
+var resolution = Resolution(width: 1920, height: 1080)
+
+resolution["width"] = 2048
+
+if let width: Int = resolution["width"] {
+  print(width) // Prints: 2048
 }
 ```
 
-## API
+### [keyPath]
+
+Gets and sets a value for a property identified by a key path.
+
+``` swift
+import KeyValueCoding
+
+struct Resolution: KeyValueCoding {
+  let width: Int
+  let height: Int
+}
+
+var resolution = Resolution(width: 1920, height: 1080)
+
+resolution[\Resolution.width] = 2048
+
+if let width: Int = resolution[\Resolution.width] {
+  print(width) // Prints: 2048
+}
+```
+
+## KeyValueCoding API
 
 Global API functions to set, get and retrieve metadata information from any instance or type **even without adopting** `KeyValueCoding` protocol.
 
-### swift_metadata()
+### swift_metadata
 
 Returns the metadata of an instance or a type which includes its `type`, `kind`, `size` and a list of accessible `properties`:
 
 ```swift
-var song = Song(name: "Blue Suede Shoes", artist: "Elvis Presley")
+import KeyValueCoding
 
-let metadata = swift_metadata(of: song)
+struct Resolution {
+  let width: Int
+  let height: Int
+}
+
+let resolution = Resolution(width: 1920, height: 1080)
+    
+var metadata = swift_metadata(of: resolution)
 // OR
-swift_metadata(of: type(of: song))
+metadata = swift_metadata(of: type(of: resolution))
 // OR
-swift_metadata(of: Song.self)
+metadata = swift_metadata(of: Resolution.self)
 
 print(metadata)
 ```
 
-Outputs:
+Prints:
 
 ```
-Metadata(type: Song, kind: .struct, size: 32, properties: [
-  Property(name: 'name', isStrong: true, isVar: false, offset: 0),
-  Property(name: 'artist', isStrong: true, isVar: false, offset: 16)])
+Metadata(type: Resolution, kind: .struct, size: 16, properties: [
+ Property(name: 'width', isStrong: true, isLazy: false, isVar: false, offset: 0), 
+ Property(name: 'height', isStrong: true, isLazy: false, isVar: false, offset: 8)
+])
 ```
 
-### swift_value(of:, key:)
+### swift_value
 
-Returns the value for the instance's property identified by a given name or key path.
+Returns the value for the instance's property identified by a given string key or a key path.
 
 ```swift
-var song = Song(name: "Blue Suede Shoes", artist: "Elvis Presley")
+import KeyValueCoding
 
-guard let name = swift_value(of: &song, key: "name"),
-      let aritst = swift_value(of: &song, key: "artist")
-else {
-    return
+struct Resolution {
+  let width: Int
+  let height: Int
 }
 
-print(name, "-", aritst) // Blue Suede Shoes - Elvis Presley
+var resolution = Resolution(width: 1920, height: 1080)
+    
+if let width = swift_value(of: &resolution, key: "width") as? Int {
+  print(width) // Prints: 1920
+}
+// OR   
+if let width = swift_value(of: &resolution, keyPath: \Resolution.width) as? Int {
+  print(width) // Prints: 1920
+}
 ```
 
-### swift_setValue(_:, to:, key:)
+### swift_setValue
 
-Sets a property of an instance specified by a given name or key path to a given value.
+Sets a property of an instance specified by a given string key or a key path to a given value.
 
-```swift
-var song = Song(name: "", artist: "")
+``` swift
+import KeyValueCoding
 
-swift_setValue("Blue Suede Shoes", to: &song, key: "name")
-swift_setValue("Elvis Presley", to: &song, key: "artist")
+struct Resolution {
+  let width: Int
+  let height: Int
+}
 
-print(song.name, "-", song.artist) // Blue Suede Shoes - Elvis Presley
+var resolution = Resolution(width: 1920, height: 1080)
+    
+swift_setValue(2048, to: &resolution, key: "width")
+// OR
+swift_setValue(2048, to: &resolution, keyPath: \Resolution.width)
+    
+print(resolution) // Prints: Resolution(width: 2048, height: 1080)
 ```
 
 ## Installation
