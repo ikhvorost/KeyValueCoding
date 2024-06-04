@@ -1,6 +1,6 @@
 # KeyValueCoding
 
-[![Swift 5.10, 5.9, 5.8, 5.7](https://img.shields.io/badge/Swift-5.10%20|%205.9|%205.8|%205.7-f48041.svg?style=flat&logo=swift)](https://developer.apple.com/swift)
+[![Swift 5.10, 5.9, 5.8, 5.7](https://img.shields.io/badge/Swift-5.10%20|%205.9%20|%205.8%20|%205.7-f48041.svg?style=flat&logo=swift)](https://developer.apple.com/swift)
 ![Platforms: iOS, macOS, tvOS, visionOS, watchOS](https://img.shields.io/badge/Platforms-iOS%20|%20macOS%20|%20tvOS%20|%20visionOS%20|%20watchOS%20-blue.svg?style=flat&logo=apple)
 [![Swift Package Manager: compatible](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-4BC51D.svg?style=flat&logo=apple)](https://swift.org/package-manager/)
 [![Build](https://github.com/ikhvorost/KeyValueCoding/actions/workflows/swift.yml/badge.svg?branch=main)](https://github.com/ikhvorost/KeyValueCoding/actions/workflows/swift.yml)
@@ -11,17 +11,17 @@
 
 `KeyValueCoding` provides a mechanism by which you can access the properties of pure Swift `struct` or `class` instances indirectly by a string key or a key path.
 
-- [Getting Started](#gettingstarted)
+- [Getting Started](#getting-started)
   - [Basics](#basics)
   - [Relationship](#relationship)
   - [Class Inheritance](#class-inheritance)
   - [Protocols](#protocols)
-  - [swift_value & swift_setValue](#swift_value--swift_setvalue)
-- [KeyValueCoding](#keyvaluecoding-protocol)
+  - [Advanced functions](#advanced-functions)
+- [Methods](#methods)
   - [metadata](#metadata)
   - [[key]](#key)
   - [[keyPath]](#keypath)
-- [KeyValueCoding API](#keyvaluecoding-api)
+- [API](#api)
   - [swift_metadata](#swift_metadata)
   - [swift_value](#swift_value)
   - [swift_setValue](#swift_setvalue)
@@ -182,7 +182,7 @@ if let width: Int = resolution[\Resolution.width], let height: Int = resolution[
 }
 ```
 
-### swift_value & swift_setValue
+### Advanced functions
 
 In additional you can use pure API functions for getting and setting values of an instance's properties **without adopting** `KeyValueCoding` protocol at all:
 
@@ -209,7 +209,7 @@ if let width = swift_value(of: &resolution, keyPath: \Resolution.width) as? Int,
 }
 ```
 
-## KeyValueCoding
+## Methods
 
 Swift instances of `struct` or `class` that adopt `KeyValueCoding` protocol are key-value coding compliant for their properties and they are addressable via essential subscriptions `[key]` and `[keyPath]`.
 
@@ -219,7 +219,7 @@ Swift instances of `struct` or `class` that adopt `KeyValueCoding` protocol are 
 Returns the metadata of the instance which includes its type, kind, size and a list of accessible properties:
 
 ```swift
-import KeyValueCoding
+import KeyValueCoding 
 
 struct Resolution: KeyValueCoding {
   let width: Int
@@ -281,7 +281,7 @@ if let width: Int = resolution[\Resolution.width] {
 }
 ```
 
-## KeyValueCoding API
+## API
 
 Global API functions to set, get and retrieve metadata information from any instance or type **even without adopting** `KeyValueCoding` protocol.
 
